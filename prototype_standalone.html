@@ -62,6 +62,41 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Non-battle scenes own their scrolling because the document itself is fixed. */
+.flowScene {
+  width: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh !important;
+  min-height: 100dvh !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+  box-sizing: border-box;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.flowScene--centered {
+  justify-content: safe center !important;
+}
+.flowModal {
+  box-sizing: border-box;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.flowModal__panel {
+  max-height: calc(100vh - 32px) !important;
+  max-height: calc(100dvh - 32px) !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.resultOverlay {
+  box-sizing: border-box;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Global red dark-fantasy background. */
 body::before {
   content:''; position: fixed; inset:0; z-index:0;
@@ -4363,6 +4398,177 @@ body::after{
   }
   .layoutTweakToggle,
   .layoutTweak { display: none !important; }
+
+  .flowScene {
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    padding:
+      max(6px, env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left)) !important;
+  }
+  .pickCardGrid {
+    flex-wrap: nowrap !important;
+    justify-content: safe center !important;
+    width: 100%;
+    gap: 8px !important;
+    margin-bottom: 8px !important;
+    padding: 4px 2px 8px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .pickCard {
+    flex: 0 0 auto;
+    width: min(190px, 28vw) !important;
+    min-height: 210px !important;
+    gap: 5px !important;
+    padding: 10px !important;
+  }
+  .pickCard > div:first-child {
+    padding-bottom: 4px !important;
+    font-size: 13px !important;
+    letter-spacing: 1px !important;
+  }
+  .pickCard > div:first-child > span:last-child { font-size: 9px !important; }
+  .pickCard > div:nth-child(2) { font-size: 8px !important; letter-spacing: 1px !important; }
+  .pickCard > div:nth-child(3) { font-size: 9px !important; line-height: 1.4 !important; }
+  .flowSceneActions {
+    flex: 0 0 auto;
+    gap: 8px !important;
+    padding-bottom: max(2px, env(safe-area-inset-bottom));
+  }
+  .flowSceneActions button {
+    min-height: 30px;
+    padding: 6px 18px !important;
+    font-size: 10px !important;
+    letter-spacing: 3px !important;
+  }
+  .flowModal {
+    padding:
+      max(6px, env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left)) !important;
+  }
+  .flowModal__panel {
+    max-height: calc(100dvh - 12px) !important;
+  }
+  .equipmentTargetModal__panel,
+  .deckRemovalModal__panel,
+  .rewardEvolutionPreviewModal__panel,
+  .evolutionUnlockOverlay__panel {
+    width: min(920px, calc(100vw - 20px)) !important;
+    min-width: 0 !important;
+    padding: 10px 14px !important;
+  }
+  .fusionPickerModal__panel { max-height: calc(100dvh - 12px) !important; }
+  .resultOverlay {
+    align-content: start !important;
+    gap: 5px !important;
+    padding:
+      max(6px, env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      max(8px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
+  }
+  .resultOverlay > div:first-child { font-size: min(32dvh, 110px) !important; }
+  .resultOverlay > div:nth-child(2) { font-size: 22px !important; }
+  .resultOverlay > button { margin-top: 6px !important; padding: 7px 24px !important; font-size: 11px !important; }
+
+  .evolutionUnlockScene {
+    width: 100%;
+    height: 100dvh;
+    min-height: 100dvh;
+    justify-content: flex-start;
+    overflow: hidden;
+    padding:
+      max(5px, env(safe-area-inset-top))
+      max(10px, env(safe-area-inset-right))
+      max(6px, env(safe-area-inset-bottom))
+      max(10px, env(safe-area-inset-left));
+  }
+  .evolutionUnlockScene__title {
+    flex: 0 0 auto;
+    margin-bottom: 2px;
+    font-size: clamp(20px, 6dvh, 27px);
+    letter-spacing: 5px;
+    line-height: 1.15;
+  }
+  .evolutionUnlockScene__subtitle {
+    flex: 0 0 auto;
+    min-height: 0;
+    margin-bottom: 4px;
+    font-size: 8px;
+    line-height: 1.4;
+    letter-spacing: 1px;
+  }
+  .evolutionUnlockScene__unitGrid {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    width: 100%;
+    gap: 8px;
+    padding: 4px 6px;
+  }
+  .evolutionUnlockUnit {
+    min-height: 128px;
+    padding: 9px 10px;
+  }
+  .evolutionUnlockUnit__name { margin-bottom: 5px; font-size: 13px; }
+  .evolutionUnlockUnit__stage { margin-bottom: 5px; font-size: 9px; line-height: 1.4; }
+  .evolutionUnlockUnit__effect { font-size: 8px; line-height: 1.4; }
+  .evolutionUnlockTreeWrap {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    width: 100%;
+  }
+  .evolutionUnlockTree__toolbar {
+    flex: 0 0 auto;
+    min-height: 29px;
+    margin-bottom: 3px;
+  }
+  .evolutionUnlockTree__heading {
+    font-size: 11px;
+    letter-spacing: 2px;
+  }
+  .evolutionUnlockScene__back {
+    padding: 5px 10px;
+    font-size: 8px;
+  }
+  .evolutionUnlockTree {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
+    justify-content: safe center;
+    gap: 8px;
+    padding: 4px 6px 8px;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .evolutionUnlockStage { min-width: 158px; padding: 8px; }
+  .evolutionUnlockStage__header {
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 9px;
+    letter-spacing: 1px;
+  }
+  .evolutionUnlockStage__header strong { font-size: 8px; }
+  .evolutionUnlockStage__branches { gap: 6px; }
+  .evolutionUnlockStage__branchLabel { margin-bottom: 3px; font-size: 7px; }
+  .evolutionUnlockScene__confirm {
+    position: relative;
+    z-index: 2;
+    flex: 0 0 auto;
+    min-height: 30px;
+    margin-top: 4px;
+    padding: 6px 24px;
+    font-size: 10px;
+    letter-spacing: 3px;
+  }
   .battleTopBar { min-height: 0; padding: 2px 8px; }
   .relicStrip { gap: 4px; }
   .relicStrip .relic {
@@ -14905,7 +15111,7 @@ function PlaceholderScene({ label, ruby, msg, onAdvance }) {
     background:'#12100c', padding:'24px',
   };
   return (
-    <div style={wrap}>
+    <div className="flowScene flowScene--centered placeholderScene" style={wrap}>
       <div style={{fontSize:42, letterSpacing:8, marginBottom:6}}>{label}</div>
       {ruby && <div style={{fontSize:11, opacity:0.5, letterSpacing:4, marginBottom:32}}>{ruby}</div>}
       <div style={{fontSize:14, opacity:0.6, marginBottom:36, maxWidth:600, textAlign:'center', lineHeight:1.7}}>
@@ -14969,7 +15175,7 @@ function PickCard({ item, selected = false, onClick }) {
     ...rarityFrame(rarity, selected),
   };
   return (
-    <div style={style} onClick={onClick}>
+    <div className="pickCard" style={style} onClick={onClick}>
       <div style={{
         fontSize: 18, letterSpacing: 3, color: '#eccf7e',
         borderBottom: rarity === 'rare' ? '1px solid rgba(255,231,163,0.42)' : '1px solid rgba(184,138,46,0.3)',
@@ -15232,7 +15438,7 @@ function RewardScene({ runState, enemyName, isBoss, rewardContext = 'normal_batt
 
   // 共通：カードリスト描画
   const renderChoices = (choices, pickedId, onPickId) => (
-    <div style={{display:'flex', gap:20, marginBottom:30, flexWrap:'wrap', justifyContent:'center'}}>
+    <div className="pickCardGrid" style={{display:'flex', gap:20, marginBottom:30, flexWrap:'wrap', justifyContent:'center'}}>
       {choices.map(reward => {
         const c = reward.card;
         return (
@@ -15251,7 +15457,7 @@ function RewardScene({ runState, enemyName, isBoss, rewardContext = 'normal_batt
   if (step === 'relic') {
     const confirmRelic = () => setStep('spell');
     return (
-      <div style={wrap}>
+      <div className="flowScene flowScene--centered rewardScene" style={wrap}>
         <div style={{fontSize:14, color:'#c8252b', letterSpacing:4, marginBottom:6}}>ボス報酬</div>
         <div style={{fontSize:42, letterSpacing:4, marginBottom:14}}>戦闘報酬</div>
         <div style={{fontSize:14, opacity:0.75, marginBottom:8, maxWidth:600, textAlign:'center', lineHeight:1.7}}>
@@ -15264,7 +15470,7 @@ function RewardScene({ runState, enemyName, isBoss, rewardContext = 'normal_batt
           <div style={{fontSize:13, opacity:0.7, marginBottom:24, maxWidth:600, textAlign:'center', lineHeight:1.7}}>
             獲得するレリックを1つ選択してください。
           </div>
-          <div style={{display:'flex', gap:20, marginBottom:30, flexWrap:'wrap', justifyContent:'center'}}>
+          <div className="pickCardGrid" style={{display:'flex', gap:20, marginBottom:30, flexWrap:'wrap', justifyContent:'center'}}>
             {relicChoices.map(c => (
               <div key={c.id} style={itemStyle(pickedRelic === c.id)} onClick={()=>setPickedRelic(c.id)}>
                 <div style={{fontSize:18, letterSpacing:3, color:'#eccf7e', borderBottom:'1px solid rgba(184,138,46,0.3)', paddingBottom:8}}>
@@ -15297,7 +15503,7 @@ function RewardScene({ runState, enemyName, isBoss, rewardContext = 'normal_batt
   // ---- step='unit'：モンスターカード3択 ----
   if (step === 'unit') {
     return (
-      <div style={wrap}>
+      <div className="flowScene flowScene--centered rewardScene" style={wrap}>
         {isBoss && <div style={{fontSize:14, color:'#c8252b', letterSpacing:4, marginBottom:6}}>ボス報酬</div>}
         <div style={{fontSize:42, letterSpacing:4, marginBottom:18}}>戦闘報酬</div>
         <div style={{fontSize:14, opacity:0.75, marginBottom:10, maxWidth:600, textAlign:'center', lineHeight:1.7}}>
@@ -15313,7 +15519,7 @@ function RewardScene({ runState, enemyName, isBoss, rewardContext = 'normal_batt
           デッキに加えるユニットを1体選択してください。
         </div>
         {renderChoices(unitChoices, pickedUnit, setPickedUnit)}
-        <div style={{display:'flex', gap:18}}>
+        <div className="flowSceneActions" style={{display:'flex', gap:18}}>
           <button
             onClick={()=>{ if (pickedUnit) setStep('spell'); }}
             disabled={!pickedUnit}
@@ -15334,7 +15540,7 @@ function RewardScene({ runState, enemyName, isBoss, rewardContext = 'normal_batt
     onPick({ unitReward, spellReward, relic });
   };
   return (
-    <div style={wrap}>
+    <div className="flowScene flowScene--centered rewardScene" style={wrap}>
       {isBoss && <div style={{fontSize:14, color:'#c8252b', letterSpacing:4, marginBottom:6}}>ボス報酬</div>}
       <div style={{fontSize:42, letterSpacing:4, marginBottom:18}}>戦闘報酬</div>
       <div style={{fontSize:14, opacity:0.75, marginBottom:10, maxWidth:600, textAlign:'center', lineHeight:1.7}}>
@@ -15350,7 +15556,7 @@ function RewardScene({ runState, enemyName, isBoss, rewardContext = 'normal_batt
         デッキに加えるスペルを1枚選択してください。
       </div>
       {renderChoices(spellChoices, pickedSpell, setPickedSpell)}
-      <div style={{display:'flex', gap:18}}>
+      <div className="flowSceneActions" style={{display:'flex', gap:18}}>
         <button
           onClick={()=>{
             if (!pickedSpell) return;
@@ -15400,8 +15606,9 @@ function RewardEvolutionPreviewModal({ reward, onClose }) {
   });
 
   return (
-    <div className="overlay" style={{ background:'rgba(4, 4, 8, 0.72)', zIndex:240 }} onClick={onClose}>
+    <div className="overlay flowModal rewardEvolutionPreviewModal" style={{ background:'rgba(4, 4, 8, 0.72)', zIndex:240 }} onClick={onClose}>
       <div
+        className="flowModal__panel rewardEvolutionPreviewModal__panel"
         style={{
           width:'min(960px, calc(100vw - 48px))',
           maxHeight:'calc(100vh - 72px)',
@@ -15543,8 +15750,8 @@ function DeckViewerModal({ open, onClose, mode, cards }) {
   };
 
   return (
-    <div style={overlay} onClick={onClose}>
-      <div style={panel} onClick={(e)=>e.stopPropagation()}>
+    <div className="flowModal deckViewerModal" style={overlay} onClick={onClose}>
+      <div className="flowModal__panel deckViewerModal__panel" style={panel} onClick={(e)=>e.stopPropagation()}>
         <button style={closeBtn} onClick={onClose} aria-label="閉じる">✕</button>
 
         <div style={{fontSize:32, letterSpacing:8, marginBottom:4}}>{title}</div>
@@ -15654,8 +15861,8 @@ function DeckRemovalModal({ open, onClose, onRemove, cards, price }) {
   };
 
   return (
-    <div style={overlay} onClick={onClose}>
-      <div style={panel} onClick={(e)=>e.stopPropagation()}>
+    <div className="flowModal deckRemovalModal" style={overlay} onClick={onClose}>
+      <div className="flowModal__panel deckRemovalModal__panel" style={panel} onClick={(e)=>e.stopPropagation()}>
         <button style={closeBtn} onClick={onClose} aria-label="閉じる">✕</button>
 
         <div style={{fontSize:32, letterSpacing:4, marginBottom:4, color:'#eccf7e'}}>カード削除</div>
@@ -15915,7 +16122,7 @@ function FusionScene({ runState, onResult }) {
 
   if (unitCards.length < 2) {
     return (
-      <div style={wrap}>
+      <div className="flowScene flowScene--centered fusionScene" style={wrap}>
         <div style={{fontSize:42, letterSpacing:4, marginBottom:6}}>ユニット融合</div>
         <div style={{fontSize:11, opacity:0.5, letterSpacing:4, marginBottom:32}}>ゆうごう の さいだん</div>
         <div style={{fontSize:18, color:'#bbb', letterSpacing:4, marginBottom:18}}>
@@ -15930,7 +16137,7 @@ function FusionScene({ runState, onResult }) {
   }
 
   return (
-    <div style={wrap}>
+    <div className="flowScene flowScene--centered fusionScene" style={wrap}>
       <div style={{fontSize:42, letterSpacing:4, marginBottom:6}}>ユニット融合</div>
       <div style={{fontSize:11, opacity:0.5, letterSpacing:4, marginBottom:24}}>ゆうごう の さいだん</div>
       <div style={{fontSize:13, opacity:0.72, marginBottom:20, maxWidth:760, textAlign:'center', lineHeight:1.7}}>
@@ -16063,8 +16270,9 @@ function FusionScene({ runState, onResult }) {
       </div>
 
       {pickerMode && (
-        <div style={modalWrap} onClick={() => setPickerMode(null)}>
+        <div className="flowModal fusionPickerModal" style={modalWrap} onClick={() => setPickerMode(null)}>
           <div
+            className="flowModal__panel fusionPickerModal__panel"
             style={{
               width:'min(760px, 100%)',
               maxHeight:'min(78vh, 860px)',
@@ -16147,13 +16355,13 @@ function EquipmentTargetModal({ equipment, deck, onSelect, onCancel, errorMessag
   const targets = window.EquipmentService.getEligibleTargets(deck || [], equipment);
 
   return (
-    <div style={{
+    <div className="flowModal equipmentTargetModal" style={{
       position:'fixed', inset:0, zIndex:300,
       background:'rgba(8,4,4,0.82)',
       display:'flex', alignItems:'center', justifyContent:'center',
       fontFamily:'"Zen Kaku Gothic New", serif',
     }}>
-      <div style={{
+      <div className="flowModal__panel equipmentTargetModal__panel" style={{
         background:'#12100c', border:'1.5px solid #c8a24a', borderRadius:6,
         width:'min(820px, 95vw)', maxHeight:'90vh', overflowY:'auto',
         padding:'26px 26px 22px', color:'#efe4cd',
@@ -16432,7 +16640,7 @@ function ShopScene({ runState, onBuy, onLeave }) {
   };
 
   return (
-    <div style={wrap}>
+    <div className="flowScene shopScene" style={wrap}>
       {/* タイトル帯：所持金 */}
       <div style={{
         display:'flex', alignItems:'center', gap:32, marginBottom:14,
@@ -16625,7 +16833,7 @@ function EquipmentScene({ runState, onResult, rewardContext = 'event_equipment',
 
   if (!chosenEquip) {
     return (
-      <div style={wrap}>
+      <div className="flowScene flowScene--centered equipmentScene" style={wrap}>
         <div style={{ fontSize:13, letterSpacing:5, opacity:0.6, marginBottom:8 }}>装備カード獲得</div>
         <div style={{ fontSize:22, letterSpacing:6, marginBottom:32 }}>装備できるカードがありません</div>
         <button onClick={() => onResult({ deck: runState.deck || [] })} style={btnSecondary}>マップへ戻る</button>
@@ -21032,7 +21240,7 @@ function MapScene({ runState, onAdvance, onDebugAddCard, onDebugUnlockEvolutionG
   };
 
   return (
-    <div style={{
+    <div className="flowScene mapScene" style={{
       position: 'relative', zIndex: 2,
       minHeight: '100vh',
       height: '100vh',
@@ -21272,7 +21480,7 @@ function MapScene({ runState, onAdvance, onDebugAddCard, onDebugUnlockEvolutionG
 // ============================================================
 function ResultOverlay({ kanji, title, sub, onRestart, lose }) {
   return (
-    <div className={`overlay ${lose ? 'overlay--lose' : 'overlay--win'}`}
+    <div className={`overlay resultOverlay ${lose ? 'overlay--lose' : 'overlay--win'}`}
          style={{ position:'fixed', inset:0, zIndex:200,
                   background:'radial-gradient(ellipse at center, rgba(0,0,0,0.88), rgba(0,0,0,0.96))',
                   display:'grid', placeItems:'center', alignContent:'center', gap:14,
@@ -21302,13 +21510,13 @@ function EvolutionUnlockOverlay({ info, onClose }) {
     window.Texts?.getGameTextDisplay?.('evolution_unlock_ui', textId, vars, options)?.text || '?'
   );
   return (
-    <div className="overlay overlay--win"
+    <div className="overlay overlay--win flowModal evolutionUnlockOverlay"
          style={{ position:'fixed', inset:0, zIndex:220,
                   background:'radial-gradient(ellipse at center, rgba(28,14,8,0.9), rgba(4,2,2,0.97))',
                   display:'grid', placeItems:'center', alignContent:'center', gap:14,
                   color:'#efe4cd', fontFamily:'"Zen Kaku Gothic New", serif' }}
          onClick={onClose}>
-      <div style={{
+      <div className="flowModal__panel evolutionUnlockOverlay__panel" style={{
         minWidth:'min(720px, calc(100vw - 48px))',
         maxWidth:'min(720px, calc(100vw - 48px))',
         background:'linear-gradient(180deg, rgba(34,18,8,0.96), rgba(12,10,8,0.98))',
@@ -21374,7 +21582,7 @@ function CardPickEventScene({ label, picks, onPick }) {
   const keyOf = (card, i) => (card && card.id != null ? card.id : i);
   const pickedItem = picks.find((p, i) => keyOf(p, i) === pickedKey) || null;
   return (
-    <div style={{
+    <div className="flowScene flowScene--centered cardPickEventScene" style={{
       position: 'relative', zIndex: 2,
       minHeight: '100vh',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
@@ -21382,7 +21590,7 @@ function CardPickEventScene({ label, picks, onPick }) {
     }}>
       <div style={{ fontSize: 32, letterSpacing: 8 }}>{label}</div>
       <div style={{ fontSize: 12, opacity: 0.6, letterSpacing: 4 }}>カードを1枚選んでデッキに加える</div>
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+      <div className="pickCardGrid" style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
         {picks.map((card, i) => {
           const key = keyOf(card, i);
           return (
@@ -21395,7 +21603,7 @@ function CardPickEventScene({ label, picks, onPick }) {
           );
         })}
       </div>
-      <div style={{ display: 'flex', gap: 16 }}>
+      <div className="flowSceneActions" style={{ display: 'flex', gap: 16 }}>
         <button
           disabled={!pickedItem}
           onClick={() => pickedItem && onPick(pickedItem)}
