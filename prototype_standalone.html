@@ -4274,16 +4274,6 @@ body::after{
 }
 
 @media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
-  :root {
-    --cell-w: clamp(76px, 10.7vw, 96px);
-    --cell-h: clamp(82px, 24dvh, 104px);
-    --lane-gap: clamp(5px, 0.9vw, 10px);
-    --lane-vgap: clamp(5px, 1.8dvh, 10px);
-    --board-gap: clamp(5px, 1vw, 10px);
-    --divider-w: 4px;
-    --hpside-w: clamp(42px, 6vw, 58px);
-  }
-
   .titleScene {
     width: 100%;
     height: 100dvh;
@@ -4355,6 +4345,14 @@ body::after{
   }
 
   .scene {
+    /* The desktop layout panel writes these on :root as inline styles. */
+    --cell-w: clamp(76px, 10.7vw, 96px) !important;
+    --cell-h: clamp(82px, 24dvh, 104px) !important;
+    --lane-gap: clamp(5px, 0.9vw, 10px) !important;
+    --lane-vgap: clamp(5px, 1.8dvh, 10px) !important;
+    --board-gap: clamp(5px, 1vw, 10px) !important;
+    --divider-w: 4px !important;
+    --hpside-w: clamp(42px, 6vw, 58px) !important;
     grid-template-rows: 30px minmax(0, 1fr) 112px;
     gap: 3px;
     padding:
@@ -4363,6 +4361,8 @@ body::after{
       max(4px, env(safe-area-inset-bottom))
       max(5px, env(safe-area-inset-left));
   }
+  .layoutTweakToggle,
+  .layoutTweak { display: none !important; }
   .battleTopBar { min-height: 0; padding: 2px 8px; }
   .relicStrip { gap: 4px; }
   .relicStrip .relic {
