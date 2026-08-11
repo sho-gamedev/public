@@ -4408,6 +4408,28 @@ body::after{
       max(8px, env(safe-area-inset-bottom))
       max(10px, env(safe-area-inset-left)) !important;
   }
+  .rewardScene__kicker {
+    margin-bottom: 1px !important;
+    font-size: 8px !important;
+    letter-spacing: 2px !important;
+  }
+  .rewardScene__title {
+    margin-bottom: 2px !important;
+    font-size: clamp(21px, 6.5dvh, 27px) !important;
+    line-height: 1.1;
+    letter-spacing: 3px !important;
+  }
+  .rewardScene__summary {
+    margin-bottom: 2px !important;
+    font-size: 9px !important;
+    line-height: 1.3;
+    letter-spacing: 1px !important;
+  }
+  .rewardScene__instruction {
+    margin-bottom: 2px !important;
+    font-size: 8px !important;
+    line-height: 1.35 !important;
+  }
   .pickCardGrid {
     flex-wrap: nowrap !important;
     justify-content: safe center !important;
@@ -15364,7 +15386,7 @@ function EvolutionUnlockScene({ deck, onUnlock, onContinue }) {
   );
 }
 
-function RewardScene({ runState, enemyName, isBoss, rewardContext = 'normal_battle', goldGain, onPick }) {
+function RewardScene({ runState, isBoss, rewardContext = 'normal_battle', goldGain, onPick }) {
   const rewardService = window.RewardService;
 
   // ---------- ユニットプール ----------
@@ -15458,12 +15480,9 @@ function RewardScene({ runState, enemyName, isBoss, rewardContext = 'normal_batt
     const confirmRelic = () => setStep('spell');
     return (
       <div className="flowScene flowScene--centered rewardScene" style={wrap}>
-        <div style={{fontSize:14, color:'#c8252b', letterSpacing:4, marginBottom:6}}>ボス報酬</div>
-        <div style={{fontSize:42, letterSpacing:4, marginBottom:14}}>戦闘報酬</div>
-        <div style={{fontSize:14, opacity:0.75, marginBottom:8, maxWidth:600, textAlign:'center', lineHeight:1.7}}>
-          {enemyName ? `${enemyName}を撃破した。` : 'ボスを撃破した。'}
-        </div>
-        <div style={{fontSize:13, color:'#eccf7e', letterSpacing:3, marginBottom:24}}>
+        <div className="rewardScene__kicker" style={{fontSize:14, color:'#c8252b', letterSpacing:4, marginBottom:6}}>ボス報酬</div>
+        <div className="rewardScene__title" style={{fontSize:42, letterSpacing:4, marginBottom:14}}>戦闘報酬</div>
+        <div className="rewardScene__summary" style={{fontSize:13, color:'#eccf7e', letterSpacing:3, marginBottom:24}}>
           ＋100G ／ レリック1個 ／ スペル1枚
         </div>
         {relicChoices.length > 0 ? (<>
@@ -15504,18 +15523,12 @@ function RewardScene({ runState, enemyName, isBoss, rewardContext = 'normal_batt
   if (step === 'unit') {
     return (
       <div className="flowScene flowScene--centered rewardScene" style={wrap}>
-        {isBoss && <div style={{fontSize:14, color:'#c8252b', letterSpacing:4, marginBottom:6}}>ボス報酬</div>}
-        <div style={{fontSize:42, letterSpacing:4, marginBottom:18}}>戦闘報酬</div>
-        <div style={{fontSize:14, opacity:0.75, marginBottom:10, maxWidth:600, textAlign:'center', lineHeight:1.7}}>
-          {enemyName ? `${enemyName}を撃破した。` : '戦闘に勝利した。'}
-        </div>
-        <div style={{fontSize:13, color:'#eccf7e', letterSpacing:3, marginBottom:8}}>
+        {isBoss && <div className="rewardScene__kicker" style={{fontSize:14, color:'#c8252b', letterSpacing:4, marginBottom:6}}>ボス報酬</div>}
+        <div className="rewardScene__title" style={{fontSize:42, letterSpacing:4, marginBottom:18}}>戦闘報酬</div>
+        <div className="rewardScene__summary" style={{fontSize:13, color:'#eccf7e', letterSpacing:3, marginBottom:8}}>
           ＋{goldGain || 100}G ／ ユニット1枚 ／ スペル1枚
         </div>
-        <div style={{fontSize:12, opacity:0.5, letterSpacing:3, marginBottom:24}}>
-          1 / 2 ── ユニットを選択
-        </div>
-        <div style={{fontSize:13, opacity:0.7, marginBottom:24, maxWidth:600, textAlign:'center', lineHeight:1.7}}>
+        <div className="rewardScene__instruction" style={{fontSize:13, opacity:0.7, marginBottom:24, maxWidth:600, textAlign:'center', lineHeight:1.7}}>
           デッキに加えるユニットを1体選択してください。
         </div>
         {renderChoices(unitChoices, pickedUnit, setPickedUnit)}
@@ -15541,18 +15554,12 @@ function RewardScene({ runState, enemyName, isBoss, rewardContext = 'normal_batt
   };
   return (
     <div className="flowScene flowScene--centered rewardScene" style={wrap}>
-      {isBoss && <div style={{fontSize:14, color:'#c8252b', letterSpacing:4, marginBottom:6}}>ボス報酬</div>}
-      <div style={{fontSize:42, letterSpacing:4, marginBottom:18}}>戦闘報酬</div>
-      <div style={{fontSize:14, opacity:0.75, marginBottom:10, maxWidth:600, textAlign:'center', lineHeight:1.7}}>
-        {enemyName ? `${enemyName}を撃破した。` : '戦闘に勝利した。'}
-      </div>
-      <div style={{fontSize:13, color:'#eccf7e', letterSpacing:3, marginBottom:8}}>
+      {isBoss && <div className="rewardScene__kicker" style={{fontSize:14, color:'#c8252b', letterSpacing:4, marginBottom:6}}>ボス報酬</div>}
+      <div className="rewardScene__title" style={{fontSize:42, letterSpacing:4, marginBottom:18}}>戦闘報酬</div>
+      <div className="rewardScene__summary" style={{fontSize:13, color:'#eccf7e', letterSpacing:3, marginBottom:8}}>
         ＋{goldGain || 100}G ／ {isBoss ? 'レリック1個 ／ ' : 'ユニット1枚 ／ '}スペル1枚
       </div>
-      <div style={{fontSize:12, opacity:0.5, letterSpacing:3, marginBottom:24}}>
-        2 / 2 ── スペルを選択
-      </div>
-      <div style={{fontSize:13, opacity:0.7, marginBottom:24, maxWidth:600, textAlign:'center', lineHeight:1.7}}>
+      <div className="rewardScene__instruction" style={{fontSize:13, opacity:0.7, marginBottom:24, maxWidth:600, textAlign:'center', lineHeight:1.7}}>
         デッキに加えるスペルを1枚選択してください。
       </div>
       {renderChoices(spellChoices, pickedSpell, setPickedSpell)}
@@ -20652,7 +20659,6 @@ const AppMain = () => {
   const [scene,      setScene]      = React.useState('title');
   const [runState,   setRunState]   = React.useState(buildInitialRunState);
   const [battleWaveId, setBattleWaveId] = React.useState(null);
-  const [rewardEnemyName, setRewardEnemyName] = React.useState(null);
   const [evolutionUnlockInfo, setEvolutionUnlockInfo] = React.useState(null);
   const [cardPickEventId, setCardPickEventId] = React.useState(null);
   const [debugEquipment, setDebugEquipment] = React.useState(null);
@@ -20668,7 +20674,6 @@ const AppMain = () => {
   const startFloor2Debug = (selectedAttribute = 'royal', mapMode = DEFAULT_MAP_MODE) => {
     setRunState(buildFloor2DebugState(selectedAttribute, mapMode));
     setBattleWaveId(null);
-    setRewardEnemyName(null);
     setEvolutionUnlockInfo(null);
     setCardPickEventId(null);
     setDebugEquipment(null);
@@ -20678,7 +20683,6 @@ const AppMain = () => {
   const restartRun = () => {
     setRunState(buildInitialRunState());
     setBattleWaveId(null);
-    setRewardEnemyName(null);
     setEvolutionUnlockInfo(null);
     setCardPickEventId(null);
     setDebugEquipment(null);
@@ -20858,9 +20862,7 @@ const AppMain = () => {
     const newHp = (typeof hp === 'number') ? Math.max(0, hp) : runState.hp;
 
     if (outcome === 'win') {
-      const wave = (window.ENEMY_WAVES || []).find(entry => entry.id === battleWaveId);
       setRunState(prev => ({ ...prev, hp: newHp, gold: (prev.gold || 0) + 100 }));
-      setRewardEnemyName(wave ? wave.name : null);
       setBattleWaveId(null);
       const currentNode = runState.map ? runState.map.nodes[runState.currentNodeId] : null;
       const offersEvolutionUnlock = window.EvolutionUnlockService.shouldOfferAfterBattle(currentNode, runState.floor || 1);
@@ -20869,7 +20871,6 @@ const AppMain = () => {
       // 敗北
       setRunState(prev => ({ ...prev, hp: 0 }));
       setBattleWaveId(null);
-      setRewardEnemyName(null);
       setScene('gameover');
     }
   };
@@ -20902,7 +20903,6 @@ const AppMain = () => {
       return applyFloorTransition(next, transition);
     });
 
-    setRewardEnemyName(null);
     setScene(nextScene);
   };
 
@@ -20953,7 +20953,6 @@ const AppMain = () => {
     const rewardContext = window.RewardService.getRewardContextForNode(currentNode);
     return <window.RewardScene
       runState={runState}
-      enemyName={rewardEnemyName}
       isBoss={!!currentNode && currentNode.type === 'boss'}
       rewardContext={rewardContext}
       goldGain={100}
