@@ -1,0 +1,27 @@
+{
+  "id": "./prototype_standalone.html",
+  "name": "フォロワー進化型デッキビルダー",
+  "short_name": "進化デッキ",
+  "description": "フォロワー進化型デッキ構築ローグライクの開発用プロトタイプ",
+  "lang": "ja",
+  "start_url": "./prototype_standalone.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#3a0810",
+  "theme_color": "#3a0810",
+  "icons": [
+    {
+      "src": "assets/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
