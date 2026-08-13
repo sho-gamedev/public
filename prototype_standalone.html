@@ -2292,6 +2292,11 @@ body::after{
   font-weight: 900;
   text-shadow: 0 2px 2px rgba(0,0,0,0.72);
 }
+.cardDetailPanel__cost--equipment {
+  border-color: rgba(174, 213, 255, 0.9);
+  background: linear-gradient(145deg, #527792, #18364e 68%, #0c1c29);
+  font-size: 14px;
+}
 .cardDetailPanel__heading { min-width: 0; }
 .cardDetailPanel__name {
   overflow-wrap: anywhere;
@@ -2360,6 +2365,96 @@ body::after{
   from { opacity: 0; transform: translateX(-7px); }
   to { opacity: 1; transform: translateX(0); }
 }
+
+/* 報酬・イベント・ショップ・進化確認・装備先選択の共通カード */
+.pickCard--selected { transform: translateY(-3px); }
+.pickCard--disabled {
+  filter: saturate(0.45) brightness(0.62);
+  cursor: not-allowed !important;
+}
+.pickCard__header > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.pickCard__header > span:last-child { flex: 0 0 auto; }
+.pickCard__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.pickCard__stat {
+  padding: 4px 8px;
+  border: 1px solid rgba(220, 225, 235, 0.18);
+  border-radius: 999px;
+  background: rgba(5, 8, 13, 0.46);
+  color: #e9e2d6;
+  font-size: 11px;
+  font-weight: 700;
+}
+.pickCard__stat--atk { color: #ff967f; }
+.pickCard__stat--hp { color: #8fd2ff; }
+.pickCard__stat--count { color: #ffe3a0; }
+.pickCard__target {
+  padding: 5px 8px;
+  border: 1px solid rgba(146, 176, 211, 0.24);
+  border-radius: 4px;
+  background: rgba(9, 15, 24, 0.56);
+  color: #d9e7f5;
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.pickCard__effect {
+  flex: 1;
+  color: rgba(239, 228, 205, 0.86);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+.pickCard__footer {
+  display: grid;
+  gap: 7px;
+  margin-top: auto;
+  padding-top: 8px;
+  border-top: 1px solid rgba(184, 138, 46, 0.2);
+}
+.pickCard__price {
+  color: #eccf7e;
+  font-size: 11px;
+  text-align: right;
+}
+.pickCard__price--spellEquipment { color: #a8d7ee; }
+.pickCard__supplement {
+  color: rgba(239, 228, 205, 0.58);
+  font-size: 10px;
+  line-height: 1.45;
+  letter-spacing: 1px;
+}
+.pickCard__supplement--stage {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.pickCard__supplement--stage strong { color: #ffe4a6; }
+.pickCard--shop { width: 220px !important; min-height: 250px !important; }
+.pickCard--spellEquipment {
+  border-color: rgba(84,145,190,0.65) !important;
+  background: #101923 !important;
+}
+.equipmentTargetModal__equipmentCard {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0 18px;
+}
+.equipmentTargetModal__equipmentCard .pickCard { min-height: 220px !important; }
+.pickCard--equipmentTarget { min-height: 260px !important; }
+.pickCard--evolutionUnit {
+  width: 100% !important;
+  min-height: 270px !important;
+  text-align: left;
+}
+.pickCard--eligible { box-shadow: 0 0 22px rgba(236,180,78,0.18) !important; }
+.pickCard--evolution { min-height: 260px !important; }
+.pickCard--evolutionPreview { width: 100% !important; min-height: 260px !important; }
 .card__curseSeal {
   position: absolute; right: -4px; top: 34px;
   z-index: 4;
@@ -4143,6 +4238,10 @@ body::after{
 }
 .card__unitStats .stat--atk { color: #ff8a6a; }
 .card__unitStats .stat--hp  { color: #88c8ff; }
+.card__unitStats .stat--count {
+  min-width: auto;
+  color: #ffe3a0;
+}
 .card__range {
   justify-self: stretch;
   min-width: 0;
@@ -4596,14 +4695,20 @@ body::after{
     gap: 5px !important;
     padding: 10px !important;
   }
-  .pickCard > div:first-child {
+  .pickCard__header {
     padding-bottom: 4px !important;
     font-size: 13px !important;
     letter-spacing: 1px !important;
   }
-  .pickCard > div:first-child > span:last-child { font-size: 9px !important; }
-  .pickCard > div:nth-child(2) { font-size: 8px !important; letter-spacing: 1px !important; }
-  .pickCard > div:nth-child(3) { font-size: 9px !important; line-height: 1.4 !important; }
+  .pickCard__header > span:last-child { font-size: 9px !important; }
+  .pickCard__meta { font-size: 8px !important; letter-spacing: 1px !important; }
+  .pickCard__stats { gap: 3px; }
+  .pickCard__stat { padding: 2px 5px; font-size: 8px; }
+  .pickCard__target { padding: 3px 5px; font-size: 7px; }
+  .pickCard__effect { font-size: 9px !important; line-height: 1.4 !important; }
+  .pickCard__footer { gap: 4px; padding-top: 4px; }
+  .pickCard__supplement,
+  .pickCard__price { font-size: 7px; }
   .flowSceneActions {
     flex: 0 0 auto;
     gap: 8px !important;
@@ -7567,7 +7672,7 @@ function buildFloor3Map() {
 // ============================================================
 // 戦闘アンカー型ランダムマップ
 // ------------------------------------------------------------
-// 戦闘位置は固定し、戦闘間の短いルートだけを2～3分岐で生成する。
+// 戦闘位置は固定し、戦闘間の短いルートを3分岐で生成する。
 // 1・2層は、少なくとも1本の完全ルートが最低保証を満たす。
 // 3層は終盤テンポを優先し、2マスの短いルートとして最低保証を適用しない。
 // ============================================================
@@ -7607,9 +7712,7 @@ const RANDOM_REWARD_WEIGHTS = Object.freeze({
   shop: 1,
 });
 
-function randomInt(rng, min, max) {
-  return min + Math.floor(rng() * (max - min + 1));
-}
+const RANDOM_BRANCH_COUNT = 3;
 
 function shuffleValues(values, rng) {
   const result = [...values];
@@ -7693,11 +7796,10 @@ function buildSegmentRouteTypes(config, rng) {
   for (let attempt = 0; attempt < 300; attempt += 1) {
     let guaranteedOffset = 0;
     const segmentRouteTypes = config.segmentLengths.map(length => {
-      const branchCount = randomInt(rng, 2, 3);
       const guaranteedSegment = guaranteedRoute.slice(guaranteedOffset, guaranteedOffset + length);
       guaranteedOffset += length;
       const routes = [guaranteedSegment];
-      while (routes.length < branchCount) {
+      while (routes.length < RANDOM_BRANCH_COUNT) {
         const route = Array.from({ length }, () => pickRandomRewardType(rng));
         if (!isWithinRouteMaximums(route)) continue;
         routes.push(route);
@@ -7767,7 +7869,7 @@ function buildRandomFloorMap(floor, options = {}) {
 
   segmentRouteTypes.forEach((routes, segmentIndex) => {
     const routeLength = config.segmentLengths[segmentIndex];
-    const columns = routes.length === 2 ? [0, 2] : [0, 1, 2];
+    const columns = [0, 1, 2];
     const routeEndIds = [];
 
     routes.forEach((routeTypes, routeIndex) => {
@@ -15793,6 +15895,7 @@ window.EquipmentTagList = EquipmentTagList;
 
 // Vertical card with an art area, title band, stats, and effect text.
 function Card({ card, onClick, selected, disabled, faceDown, firing, onHover, rarityFrame }) {
+  const presentation = buildCardPresentationModel(card);
   const theme       = getCardTheme(card);
   const rarityClass = rarityFrame ? `card--rarity-${card.rarity || 'common'}` : '';
   const attrClass   = card.attribute ? `card--attr-${card.attribute}` : '';
@@ -15825,16 +15928,12 @@ function Card({ card, onClick, selected, disabled, faceDown, firing, onHover, ra
     );
   }
 
-  const shortName = getTextShortName(card, getTextName(card));
-  const isFollower = isUnitCardType(card.cardType);
-  const effectText = describeCard(card, isFollower ? '能力なし' : '効果なし');
-  const keywordDisplays = getCardKeywordDisplays(card);
+  const shortName = presentation.shortName;
+  const isFollower = presentation.isUnit;
+  const effectText = presentation.effectText;
+  const keywordDisplays = presentation.keywordDisplays;
   const hasEquipment = (window.EquipmentService?.getEquipmentIds(card) || []).length > 0;
-  // Equipment can override attack range, so use the same resolved value as combat.
-  const effectiveGridTarget = isFollower && window.Effects?.getEffectiveGridTarget
-    ? window.Effects.getEffectiveGridTarget(card, 'front')
-    : (card.gridTarget || 'front');
-  const attackTargetDisplay = isFollower ? getGridTargetDisplay(effectiveGridTarget) : null;
+  const attackTargetDisplay = presentation.attackTargetDisplay;
   const artGlyph = shortName ? shortName.charAt(0) : '?';
   const titleLength = Array.from(shortName || '').length || 1;
   const titleFontSize = Math.max(6, Math.min(14, 108 / titleLength));
@@ -15855,11 +15954,16 @@ function Card({ card, onClick, selected, disabled, faceDown, firing, onHover, ra
         {isFollower && (
           <div className="card__artInfo">
             <div className="card__unitStats">
-              <div className="stat stat--atk">攻 {getDisplayAtk(card)}</div>
-              <div className="stat stat--hp">体 {getDisplayHp(card)}</div>
+              <div className="stat stat--atk">攻 {presentation.atk}</div>
+              <div className="stat stat--hp">体 {presentation.hp}</div>
+              {presentation.showCompactAttackCount && (
+                <div className="stat stat--count">×{presentation.attackCount}</div>
+              )}
             </div>
             <div className="card__range">
-              {attackTargetDisplay && <KeywordTooltipText text={attackTargetDisplay.text} displays={[attackTargetDisplay]} variant="card" />}
+              {presentation.showCompactAttackTarget && attackTargetDisplay && (
+                <KeywordTooltipText text={attackTargetDisplay.text} displays={[attackTargetDisplay]} variant="card" />
+              )}
             </div>
           </div>
         )}
@@ -15880,8 +15984,33 @@ function Card({ card, onClick, selected, disabled, faceDown, firing, onHover, ra
   );
 }
 
-function buildCardDetailViewModel(card) {
+function buildCardPresentationModel(card, { itemType = null } = {}) {
   if (!card) return null;
+  const isEquipment = itemType === 'equipment';
+  if (isEquipment) {
+    const equipmentDisplay = window.EquipmentService?.getEquipmentDisplay?.(card) || null;
+    return {
+      card,
+      isEquipment: true,
+      isUnit: false,
+      name: equipmentDisplay?.name || card.name || card.id || '?',
+      shortName: equipmentDisplay?.shortName || card.shortName || card.name || card.id || '?',
+      typeLabel: 'EQUIPMENT',
+      attributeLabel: null,
+      rarityLabel: String(card.rarity || 'common').toUpperCase(),
+      cost: null,
+      slotCost: Math.max(0, Number(card.slotCost) || 0),
+      atk: null,
+      hp: null,
+      attackCount: null,
+      showCompactAttackCount: false,
+      attackTargetId: null,
+      attackTargetDisplay: null,
+      showCompactAttackTarget: false,
+      effectText: equipmentDisplay?.text || card.desc || '効果なし',
+      keywordDisplays: [],
+    };
+  }
   const isUnit = isUnitCardType(card.cardType);
   const attributeId = String(card.attribute || '').trim();
   const attributeDisplay = attributeId
@@ -15894,32 +16023,42 @@ function buildCardDetailViewModel(card) {
   const extraAttacks = isUnit && window.Effects?.getExtraAttacks
     ? window.Effects.getExtraAttacks(card, ['passive', 'on_attack'])
     : 0;
+  const attackCount = isUnit ? Math.max(1, baseAttackCount + Math.max(0, Number(extraAttacks) || 0)) : null;
   return {
     card,
+    isEquipment: false,
     name: getTextName(card, card.id || '?'),
     shortName: getTextShortName(card, getTextName(card, card.id || '?')),
     typeLabel: CARD_TYPE_LABELS[card.cardType] || String(card.cardType || '').toUpperCase(),
     attributeLabel: attributeId ? (attributeDisplay?.text || '?') : null,
     rarityLabel: String(card.rarity || 'common').toUpperCase(),
     cost: card.cost ?? '-',
+    slotCost: null,
     isUnit,
     atk: isUnit ? getDisplayAtk(card) : null,
     hp: isUnit ? getDisplayHp(card) : null,
-    attackCount: isUnit ? Math.max(1, baseAttackCount + Math.max(0, Number(extraAttacks) || 0)) : null,
+    attackCount,
+    showCompactAttackCount: isUnit && attackCount > 1,
+    attackTargetId: isUnit ? effectiveGridTarget : null,
     attackTargetDisplay: isUnit ? getGridTargetDisplay(effectiveGridTarget) : null,
+    showCompactAttackTarget: isUnit && effectiveGridTarget !== 'front',
     effectText: describeCard(card, isUnit ? '能力なし' : '効果なし'),
     keywordDisplays: getCardKeywordDisplays(card),
   };
 }
 
-function CardDetailPanel({ card, pinned = false, onClose }) {
-  const detail = buildCardDetailViewModel(card);
+const buildCardDetailViewModel = buildCardPresentationModel;
+
+function CardDetailPanel({ card, itemType = null, pinned = false, onClose }) {
+  const detail = buildCardPresentationModel(card, { itemType });
   if (!detail) return null;
   return (
     <aside className={`cardDetailPanel${pinned ? ' cardDetailPanel--pinned' : ''}`} aria-live="polite">
       <button type="button" className="cardDetailPanel__close" onClick={onClose} aria-label="Close">×</button>
       <div className="cardDetailPanel__header">
-        <div className="cardDetailPanel__cost">{detail.cost}</div>
+        <div className={`cardDetailPanel__cost${detail.isEquipment ? ' cardDetailPanel__cost--equipment' : ''}`}>
+          {detail.isEquipment ? `S${detail.slotCost}` : detail.cost}
+        </div>
         <div className="cardDetailPanel__heading">
           <div className="cardDetailPanel__name">{detail.name}</div>
           <div className="cardDetailPanel__meta">
@@ -15934,7 +16073,12 @@ function CardDetailPanel({ card, pinned = false, onClose }) {
         <div className="cardDetailPanel__stats">
           <span className="cardDetailPanel__stat cardDetailPanel__stat--atk">ATK {detail.atk}</span>
           <span className="cardDetailPanel__stat cardDetailPanel__stat--hp">HP {detail.hp}</span>
-          {detail.attackCount > 1 && <span className="cardDetailPanel__stat">×{detail.attackCount}</span>}
+          <span className="cardDetailPanel__stat">×{detail.attackCount}</span>
+        </div>
+      )}
+      {detail.isEquipment && (
+        <div className="cardDetailPanel__stats">
+          <span className="cardDetailPanel__stat">装備スロット {detail.slotCost}</span>
         </div>
       )}
       {detail.attackTargetDisplay && (
@@ -15950,7 +16094,7 @@ function CardDetailPanel({ card, pinned = false, onClose }) {
         <div className="cardDetailPanel__effect">
           <KeywordTooltipText text={detail.effectText} displays={detail.keywordDisplays} variant="tooltip" />
         </div>
-        <EquipmentTagList card={detail.card} variant="tooltip" />
+        {!detail.isEquipment && <EquipmentTagList card={detail.card} variant="tooltip" />}
       </div>
     </aside>
   );
@@ -16007,8 +16151,12 @@ function PlaceholderScene({ label, ruby, msg, onAdvance }) {
 //   - 雑魚/中ボス：card=null固定。relic=選択レリック or null（見送り可）
 //   - ボス       ：relic は必ず非null（強制取得）→ card=選択カード or null（見送り可）
 // 報酬・獲得マス共通のカード描画（戦闘後報酬 RewardScene と見た目を統一するための共通コンポーネント）
-function PickCard({ item, selected = false, onClick }) {
-  const isEquipment = item._pickType === 'equipment';
+function PickCard({ item, itemType = null, selected = false, disabled = false, onClick, footer = null, className = '', showDetail = true }) {
+  const [hovered, setHovered] = React.useState(false);
+  const [detailDismissed, setDetailDismissed] = React.useState(false);
+  const presentation = buildCardPresentationModel(item, { itemType });
+  const itemKey = `${itemType || item.cardType || 'card'}:${item.uid || item.instanceId || item.id}`;
+  const isEquipment = presentation.isEquipment;
   const rarity = item.rarity || 'common';
   const rarityLabel = rarity === 'rare' ? 'RARE' : rarity === 'uncommon' ? 'UNCOMMON' : 'COMMON';
   const rarityFrame = (rar, sel) => {
@@ -16040,35 +16188,76 @@ function PickCard({ item, selected = false, onClick }) {
     transition: 'all 0.15s ease',
     ...rarityFrame(rarity, selected),
   };
+  React.useEffect(() => setDetailDismissed(false), [itemKey, selected]);
+  const detailVisible = showDetail && !detailDismissed && (hovered || selected);
   return (
-    <div className="pickCard" style={style} onClick={onClick}>
-      <div style={{
+    <>
+    <div
+      className={`pickCard${selected ? ' pickCard--selected' : ''}${disabled ? ' pickCard--disabled' : ''}${className ? ` ${className}` : ''}`}
+      style={style}
+      onClick={disabled ? undefined : onClick}
+      onMouseEnter={() => { setHovered(true); setDetailDismissed(false); }}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => { setHovered(true); setDetailDismissed(false); }}
+      onBlur={() => setHovered(false)}
+      tabIndex={disabled ? -1 : 0}
+      aria-disabled={disabled || undefined}
+    >
+      <div className="pickCard__header" style={{
         fontSize: 18, letterSpacing: 3, color: '#eccf7e',
         borderBottom: rarity === 'rare' ? '1px solid rgba(255,231,163,0.42)' : '1px solid rgba(184,138,46,0.3)',
         paddingBottom: 8, display: 'flex', justifyContent: 'space-between', alignItems: 'baseline',
       }}>
-        <span>{item.name}</span>
+        <span>{presentation.name}</span>
         <span style={{ fontSize: 14, opacity: 0.7 }}>
           {isEquipment
-            ? `スロット ${item.slotCost}`
-            : (item.cost != null ? `コスト ${item.cost}` : '')}
+            ? `スロット ${presentation.slotCost}`
+            : (presentation.cost != null ? `コスト ${presentation.cost}` : '')}
         </span>
       </div>
-      <div style={{
+      <div className="pickCard__meta" style={{
         fontSize: 10, letterSpacing: 3,
         color: rarity === 'rare' ? '#f4d67a' : rarity === 'uncommon' ? '#8fc2ff' : 'rgba(239,228,205,0.55)',
         textTransform: 'uppercase',
       }}>
         {isEquipment ? `${rarityLabel} · EQUIPMENT` : rarityLabel}
       </div>
-      {isEquipment ? (
-        <div style={{ fontSize: 12, lineHeight: 1.7, opacity: 0.88, flex: 1, whiteSpace:'pre-wrap' }}>
-          {item._displayText || item.desc || '効果なし'}
+      {presentation.isUnit && (
+        <div className="pickCard__stats">
+          <span className="pickCard__stat pickCard__stat--atk">ATK {presentation.atk}</span>
+          <span className="pickCard__stat pickCard__stat--hp">HP {presentation.hp}</span>
+          {presentation.showCompactAttackCount && (
+            <span className="pickCard__stat pickCard__stat--count">×{presentation.attackCount}</span>
+          )}
         </div>
-      ) : (
-        <div style={{ fontSize: 12, lineHeight: 1.6, opacity: 0.85, flex: 1 }}>{describeCard(item)}</div>
       )}
+      {presentation.showCompactAttackTarget && presentation.attackTargetDisplay && (
+        <div className="pickCard__target">
+          <KeywordTooltipText
+            text={presentation.attackTargetDisplay.text}
+            displays={[presentation.attackTargetDisplay]}
+            variant="card"
+          />
+        </div>
+      )}
+      <div className="pickCard__effect">
+        <KeywordTooltipText
+          text={presentation.effectText}
+          displays={presentation.keywordDisplays}
+          variant="card"
+        />
+      </div>
+      {footer && <div className="pickCard__footer">{footer}</div>}
     </div>
+    {detailVisible && (
+      <CardDetailPanel
+        card={item}
+        itemType={itemType}
+        pinned={selected}
+        onClose={() => setDetailDismissed(true)}
+      />
+    )}
+    </>
   );
 }
 
@@ -16184,22 +16373,17 @@ function EvolutionUnlockScene({ deck, onUnlock, onContinue }) {
               ? getEvolutionUnlockUiText('next_stage', { stage:state.nextStage })
               : getEvolutionUnlockUiText(state.reason === 'no_evolution' ? 'no_evolution' : 'fully_unlocked');
             return (
-              <button
+              <PickCard
                 key={uid}
-                type="button"
                 disabled={!state.eligible}
                 onClick={() => state.eligible && openTree(uid)}
-                className={`evolutionUnlockUnit${state.eligible ? ' evolutionUnlockUnit--eligible' : ' evolutionUnlockUnit--disabled'}`}
-              >
-                <div className="evolutionUnlockUnit__name">
-                  {window.Texts?.getCardName?.(card, { fallback:card.name || card.cardId }) || card.name}
-                </div>
-                <div className="evolutionUnlockUnit__stage">
+                className={`pickCard--evolutionUnit${state.eligible ? ' pickCard--eligible' : ''}`}
+                item={card}
+                footer={<div className="pickCard__supplement pickCard__supplement--stage">
                   {getEvolutionUnlockUiText('current_stage', { stage:state.unlockedStage })}
                   <strong>{statusText}</strong>
-                </div>
-                <div className="evolutionUnlockUnit__effect">{describeCard(card)}</div>
-              </button>
+                </div>}
+              />
             );
           })}
         </div>
@@ -16225,7 +16409,9 @@ function EvolutionUnlockScene({ deck, onUnlock, onContinue }) {
                 <strong>{getEvolutionUnlockUiText('stage_unlocked')}</strong>
               </div>
               <div className="evolutionUnlockStage__branches">
-                <div className="evolutionUnlockStage__card"><Card card={selectedState.card} /></div>
+                <div className="evolutionUnlockStage__card">
+                  <PickCard item={selectedState.card} className="pickCard--evolution" />
+                </div>
               </div>
             </section>
 
@@ -16264,7 +16450,9 @@ function EvolutionUnlockScene({ deck, onUnlock, onContinue }) {
                         <div className="evolutionUnlockStage__branchLabel">
                           {getEvolutionUnlockUiText('branch_label', { index:index + 1 })}
                         </div>
-                        <div className="evolutionUnlockStage__card"><Card card={entry} /></div>
+                        <div className="evolutionUnlockStage__card">
+                          <PickCard item={entry} className="pickCard--evolution" />
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -16496,7 +16684,6 @@ function RewardScene({ runState, isBoss, rewardContext = 'normal_battle', goldGa
 
 function RewardEvolutionPreviewModal({ reward, onClose }) {
   if (!reward) return null;
-  const gridLabel = (gridTarget) => getGridTargetLabel(gridTarget);
   const previewEntries = (reward.entries || []).map(entry => {
     const resolvedPreview = window.Board && window.Board.resolveEvolutionPreview
       ? window.Board.resolveEvolutionPreview(entry)
@@ -16548,33 +16735,11 @@ function RewardEvolutionPreviewModal({ reward, onClose }) {
         </div>
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit, minmax(240px, 1fr))', gap:14 }}>
           {previewEntries.map(({ entry, previewCard, desc }) => (
-            <div
+            <PickCard
               key={entry.id}
-              style={{
-                textAlign:'left',
-                border:'1px solid rgba(236, 207, 126, 0.35)',
-                borderRadius:12,
-                background:'rgba(44, 23, 12, 0.82)',
-                color:'#efe4cd',
-                padding:'14px 14px 12px',
-              }}
-            >
-              <div style={{ display:'flex', justifyContent:'space-between', gap:10, alignItems:'baseline', marginBottom:8 }}>
-                <div style={{ fontSize:18, fontWeight:700, color:'#ffcf8a' }}>
-                  {previewCard.name || entry.name || entry.id}
-                </div>
-                <div style={{ fontSize:12 }}>分岐</div>
-              </div>
-              <div style={{ fontSize:12, opacity:0.72, marginBottom:8 }}>
-                {previewCard.shortName || entry.shortName || entry.name || entry.id}
-              </div>
-              <div style={{ display:'flex', gap:12, fontSize:13, marginBottom:8 }}>
-                <span>攻 {previewCard.atk}</span>
-                <span>体 {previewCard.maxHp || previewCard.hp}</span>
-                <span>{gridLabel(previewCard.gridTarget)}</span>
-              </div>
-              <div style={{ fontSize:12, lineHeight:1.6, opacity:0.84 }}>{desc}</div>
-            </div>
+              item={{ ...previewCard, desc }}
+              className="pickCard--evolutionPreview"
+            />
           ))}
         </div>
         <div style={{ display:'flex', justifyContent:'flex-end', marginTop:16 }}>
@@ -17271,7 +17436,6 @@ function FusionScene({ runState, onResult }) {
 // ============================================================
 function EquipmentTargetModal({ equipment, deck, onSelect, onCancel, errorMessage = '' }) {
   if (!equipment) return null;
-  const display = window.EquipmentService.getEquipmentDisplay(equipment);
   const targets = window.EquipmentService.getEligibleTargets(deck || [], equipment);
 
   return (
@@ -17288,8 +17452,9 @@ function EquipmentTargetModal({ equipment, deck, onSelect, onCancel, errorMessag
         boxShadow:'0 16px 48px rgba(0,0,0,0.7)',
       }}>
         <div style={{fontSize:12, opacity:0.55, letterSpacing:4, textAlign:'center', marginBottom:8}}>装 備 カ ー ド 獲 得</div>
-        <div style={{fontSize:26, letterSpacing:4, textAlign:'center', marginBottom:4}}>{display.name}</div>
-        <div style={{fontSize:11, opacity:0.6, letterSpacing:2, textAlign:'center', marginBottom:6}}>{display.text}</div>
+        <div className="equipmentTargetModal__equipmentCard">
+          <PickCard item={equipment} itemType="equipment" />
+        </div>
         <div style={{fontSize:11, opacity:0.5, letterSpacing:4, textAlign:'center', marginBottom:18}}>装 備 先 を 選 択</div>
         {targets.length === 0 ? (
           <div style={{opacity:0.5, textAlign:'center', marginBottom:12}}>この装備を付けられるカードがありません</div>
@@ -17299,27 +17464,22 @@ function EquipmentTargetModal({ equipment, deck, onSelect, onCancel, errorMessag
               const cardUid = card.uid || card.instanceId;
               const equipmentIds = window.EquipmentService.getEquipmentIds(card);
               return (
-                <div key={cardUid || card.id} style={{
-                  minWidth:140, padding:'16px 18px',
-                  border:'1.5px solid rgba(184,138,46,0.5)', background:'#1a140d',
-                  borderRadius:6, display:'flex', flexDirection:'column', alignItems:'center', gap:6,
-                  cursor:'pointer',
-                }}
-                  onMouseEnter={e=>{ e.currentTarget.style.borderColor='#e8a020'; }}
-                  onMouseLeave={e=>{ e.currentTarget.style.borderColor='rgba(184,138,46,0.5)'; }}
+                <PickCard
+                  key={cardUid || card.id}
+                  item={card}
+                  className="pickCard--equipmentTarget"
                   onClick={()=>onSelect(cardUid)}
-                >
-                  <div style={{fontSize:13, letterSpacing:2}}>{getTextName(card, card.id)}</div>
-                  <div style={{fontSize:11, opacity:0.55}}>攻 {getDisplayAtk(card)} 体 {getDisplayHp(card)}</div>
-                  <div style={{fontSize:10, opacity:0.55}}>
+                  footer={<>
+                  <div className="pickCard__supplement">
                     装備スロット {window.EquipmentService.getEquipmentSlotUsage(card)} / {window.EquipmentService.getEquipmentSlotCapacity(card)}
                   </div>
                   {equipmentIds.length > 0 && (
-                    <div style={{fontSize:10, opacity:0.45, letterSpacing:1}}>
+                    <div className="pickCard__supplement">
                       装備: {equipmentIds.map(id => window.EquipmentService.getEquipmentDisplay(id)?.name || id).join(', ')}
                     </div>
                   )}
-                </div>
+                  </>}
+                />
               );
             })}
           </div>
@@ -17486,38 +17646,23 @@ function ShopScene({ runState, onBuy, onLeave }) {
         }}>購 入 済</div>
       );
     }
-    const isUnit = card.cardType === 'unit';
     return (
-      <div key={`c${idx}`} style={{
-        width:220, minHeight:210, padding:'10px 12px',
-        border:'1.5px solid rgba(184,138,46,0.5)', background:'#1a140d',
-        borderRadius:6, display:'flex', flexDirection:'column', gap:8,
-      }}>
-        <div style={{
-          fontSize:16, letterSpacing:2, color:'#eccf7e',
-          borderBottom:'1px solid rgba(184,138,46,0.3)', paddingBottom:5,
-          display:'flex', justifyContent:'space-between', alignItems:'baseline',
-        }}>
-          <span>{getTextName(card)}</span>
-          <span style={{fontSize:10, opacity:0.7}}>{card.rarity}</span>
-        </div>
-        <div style={{display:'flex', gap:10, fontSize:11, opacity:0.85}}>
-          <span style={{color:'#eccf7e'}}>コスト {card.cost}</span>
-          {isUnit && <span>攻 {getDisplayAtk(card)}</span>}
-          {isUnit && <span>体 {getDisplayHp(card)}</span>}
-        </div>
-        <div style={{fontSize:11, lineHeight:1.55, opacity:0.85, flex:1}}>{describeCard(card)}</div>
-        <div style={{fontSize:11, opacity:0.8, textAlign:'right', color:'#eccf7e'}}>価格 {price}G</div>
+      <PickCard
+        key={`c${idx}`}
+        item={card}
+        className="pickCard--shop"
+        footer={<>
+        <div className="pickCard__price">価格 {price}G</div>
         <button onClick={()=>tryBuyCard(idx)} disabled={disabled} style={buyBtnStyle(disabled, canAfford)}>
           {canAfford ? `買う（${price}G）` : 'ゴールド不足'}
         </button>
-      </div>
+        </>}
+      />
     );
   };
 
   const renderSpellEquipmentSlot = (entry, index) => {
     const { equipment } = entry;
-    const display = window.EquipmentService.getEquipmentDisplay(equipment);
     const price = applyMult('spell_equipment', entry.price);
     const bought = purchasedSpellEquipment.has(index);
     const canAfford = runState.gold >= price;
@@ -17533,21 +17678,13 @@ function ShopScene({ runState, onBuy, onLeave }) {
       );
     }
     return (
-      <div key={`se${index}`} style={{
-        width:220, minHeight:180, padding:'10px 12px',
-        border:'1.5px solid rgba(84,145,190,0.65)', background:'#101923',
-        borderRadius:6, display:'flex', flexDirection:'column', gap:8,
-      }}>
-        <div style={{
-          fontSize:16, letterSpacing:2, color:'#a8d7ee',
-          borderBottom:'1px solid rgba(84,145,190,0.35)', paddingBottom:5,
-          display:'flex', justifyContent:'space-between', alignItems:'baseline',
-        }}>
-          <span>{display.name}</span>
-          <span style={{fontSize:10, opacity:0.7}}>{equipment.rarity}</span>
-        </div>
-        <div style={{fontSize:11, lineHeight:1.55, opacity:0.85, flex:1}}>{display.text}</div>
-        <div style={{fontSize:11, opacity:0.8, textAlign:'right', color:'#a8d7ee'}}>
+      <PickCard
+        key={`se${index}`}
+        item={equipment}
+        itemType="equipment"
+        className="pickCard--shop pickCard--spellEquipment"
+        footer={<>
+        <div className="pickCard__price pickCard__price--spellEquipment">
           {shopText('equipment_price', { price })}
         </div>
         <button onClick={() => tryBuySpellEquipment(index)} disabled={disabled} style={buyBtnStyle(disabled, canAfford)}>
@@ -17555,7 +17692,8 @@ function ShopScene({ runState, onBuy, onLeave }) {
             ? shopText('equipment_buy', { price })
             : shopText('equipment_insufficient_gold')}
         </button>
-      </div>
+        </>}
+      />
     );
   };
 
@@ -17810,6 +17948,7 @@ function SpellUpgradeConfirmModal({ request, onConfirm, onCancel }) {
 Object.assign(window, {
   Card,
   CardDetailPanel,
+  buildCardPresentationModel,
   buildCardDetailViewModel,
   Relic,
   PlaceholderScene,
