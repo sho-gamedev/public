@@ -5160,21 +5160,46 @@ body::after{
   .debugBoardPanel { max-height: calc(100dvh - 16px); }
 }
 .playerHeartMeter {
-  display: flex;
-  justify-content: center;
-  gap: 0.08em;
+  display: block;
   font-size: clamp(15px, 1.2vw, 22px);
   line-height: 1;
-  letter-spacing: 0.08em;
   text-shadow: 0 2px 7px rgba(0, 0, 0, 0.8);
+  text-align: center;
 }
 .playerHeartMeter--board {
-  flex-wrap: wrap;
+  width: 100%;
   max-width: 150px;
   margin: 8px auto 4px;
 }
+.playerHeartMeter__icons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.16em;
+  width: 100%;
+}
 .playerHeartMeter__filled { color: #ef5366; }
 .playerHeartMeter__empty { color: rgba(224, 188, 193, 0.34); }
+.playerHeartMeter__compact { display: none; }
+.playerHeartMeter--numeric .playerHeartMeter__icons { display: none; }
+.playerHeartMeter--numeric .playerHeartMeter__compact { display: inline; }
+
+@media (orientation: landscape) and (max-height: 600px) and (pointer: coarse) {
+  .playerHeartMeter--board {
+    display: block;
+    width: var(--hpside-w);
+    max-width: var(--hpside-w);
+    margin: 3px auto 1px;
+    color: #ef5366;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .playerHeartMeter--board .playerHeartMeter__icons { display: none; }
+  .playerHeartMeter--board .playerHeartMeter__compact { display: inline; }
+}
 
 /* --- スタンドアロン版 tweak defaults（prototype_src.html の TWEAK_DEFAULTS と同値）--- */
 :root {
@@ -21399,6 +21424,30 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
   // Phase A では本物の画像を出さず、HPバーと敵名だけのシンプル表示にする。
   // 画像差し替えは Phase B 以降で。
 
+  const renderPlayerHeartMeter = (hearts, maxHearts, { board = false } = {}) => {
+    const normalizedMax = Math.max(1, Math.trunc(Number(maxHearts) || 1));
+    const normalizedHearts = Math.max(0, Math.min(normalizedMax, Math.trunc(Number(hearts) || 0)));
+    const useNumericDisplay = normalizedMax > 10;
+    return (
+      <div
+        className={`playerHeartMeter${board ? ' playerHeartMeter--board' : ''}${useNumericDisplay ? ' playerHeartMeter--numeric' : ''}`}
+        aria-label={`ハート ${normalizedHearts}/${normalizedMax}`}
+      >
+        <span className="playerHeartMeter__icons" aria-hidden="true">
+          {Array.from({ length: normalizedMax }, (_, index) => (
+            <span
+              key={index}
+              className={index < normalizedHearts ? 'playerHeartMeter__filled' : 'playerHeartMeter__empty'}
+            >
+              {index < normalizedHearts ? '♥' : '♡'}
+            </span>
+          ))}
+        </span>
+        <span className="playerHeartMeter__compact">{normalizedHearts}/{normalizedMax}</span>
+      </div>
+    );
+  };
+
   const renderChara = (isPlayer) => {
     const hearts = isPlayer ? playerHearts : 0;
     const maxHearts = isPlayer ? PLAYER_RUN_MAX_HEARTS : 1;
@@ -21424,12 +21473,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
         <div className="chara__label">
           <div className="chara__name">{isPlayer ? '自 陣' : wave.name}</div>
           {isPlayer ? (
-            <>
-              <div className="playerHeartMeter" aria-label={`ハート ${hearts}/${maxHearts}`}>
-                <span className="playerHeartMeter__filled">{'♥'.repeat(hearts)}</span>
-                <span className="playerHeartMeter__empty">{'♡'.repeat(Math.max(0, maxHearts - hearts))}</span>
-              </div>
-            </>
+            renderPlayerHeartMeter(hearts, maxHearts)
           ) : (
             <div className="chara__hpText">Wave {currentEnemyWaveIndex || '-'} / {(wave.waves || []).length || '-'}</div>
           )}
@@ -21457,10 +21501,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
         <div className="boardHpSide__name">{name}</div>
         {isPlayer ? (
           <>
-            <div className="playerHeartMeter playerHeartMeter--board" aria-label={`ハート ${hearts}/${maxHearts}`}>
-              <span className="playerHeartMeter__filled">{'♥'.repeat(hearts)}</span>
-              <span className="playerHeartMeter__empty">{'♡'.repeat(Math.max(0, maxHearts - hearts))}</span>
-            </div>
+            {renderPlayerHeartMeter(hearts, maxHearts, { board: true })}
             {combatPreview && (
               <div className={`boardHpSide__forecast${predictedLoss > 0 ? ' boardHpSide__forecast--loss' : ''}${predictedGain > 0 ? ' boardHpSide__forecast--gain' : ''}`}>
                 {previewHeartBlindUncertain && (
