@@ -4898,6 +4898,52 @@ body::after{
       max(8px, env(safe-area-inset-bottom))
       max(10px, env(safe-area-inset-left)) !important;
   }
+  .mapScene {
+    gap: 2px !important;
+    padding:
+      max(3px, env(safe-area-inset-top))
+      max(8px, env(safe-area-inset-right))
+      max(4px, env(safe-area-inset-bottom))
+      max(8px, env(safe-area-inset-left)) !important;
+  }
+  .mapScene__title {
+    flex: 0 0 auto;
+    margin-bottom: 2px !important;
+    font-size: clamp(18px, 6dvh, 24px) !important;
+    line-height: 1.05;
+    letter-spacing: 3px !important;
+  }
+  .mapScene__status {
+    flex: 0 0 auto;
+    gap: 12px !important;
+    margin-bottom: 4px !important;
+    padding: 4px 10px !important;
+    border-radius: 4px !important;
+    font-size: 9px !important;
+    line-height: 1.15;
+  }
+  .mapScene__viewport {
+    max-width: calc(100vw - 16px) !important;
+    margin-bottom: 2px !important;
+    padding-bottom: 4px !important;
+  }
+  .mapScene__content {
+    flex-direction: column;
+    align-items: center !important;
+    gap: 6px !important;
+    margin-bottom: 2px !important;
+  }
+  .mapScene__grid { margin-bottom: 2px !important; }
+  .mapScene__debugPanel {
+    width: min(300px, calc(100vw - 24px)) !important;
+    gap: 7px !important;
+    padding: 7px 9px !important;
+  }
+  .mapScene__guide {
+    margin-bottom: 3px !important;
+    font-size: 7px !important;
+    letter-spacing: 1px !important;
+  }
   .rewardScene__kicker {
     margin-bottom: 1px !important;
     font-size: 8px !important;
@@ -10795,19 +10841,14 @@ if (typeof window !== 'undefined') {
   function resolveAddHandSoldier(ctx) {
     const count = Math.max(0, Math.floor(num(ctx.effect.value)));
     const soldier = (window.FOLLOWERS || []).find(unit => unit.id === 'soldier');
-    if (!soldier || count <= 0) return { playerBoard: ctx.playerBoard, enemyBoard: ctx.enemyBoard, applied: false, targetKeys: [], commands: [], generatedCards: [] };
-    const generatedCards = Array.from({ length: count }, (_, index) => ({
-      ...soldier,
-      uid: `gen_soldier_${Date.now()}_${Math.random().toString(36).slice(2, 7)}_${index}`,
-    }));
+    if (!soldier || count <= 0) return { playerBoard: ctx.playerBoard, enemyBoard: ctx.enemyBoard, applied: false, targetKeys: [], commands: [] };
     ctx.log.push(`🃏 ${ctx.source?.name || 'ユニット'} の登場効果で兵士${count}枚を手札に追加`);
     return {
       playerBoard: ctx.playerBoard,
       enemyBoard: ctx.enemyBoard,
       applied: true,
       targetKeys: [],
-      generatedCards,
-      commands: generatedCards.map(card => ({ type: 'AddCardToHandCommand', cardId: card.id, sourceKey: ctx.sourceKey })),
+      commands: [{ type: 'AddCardToHandCommand', cardId: soldier.id, count, sourceKey: ctx.sourceKey }],
     };
   }
 
@@ -10874,7 +10915,7 @@ if (typeof window !== 'undefined') {
     return {
       selfBoard: recalcBoardPassiveScaling(selfBoard, ctx),
       enemyBoard: recalcBoardPassiveScaling(opposingBoard, ctx),
-      generatedCards: result.generatedCards,
+      commands: [...(result.commands || [])],
     };
   }
 
@@ -10887,7 +10928,11 @@ if (typeof window !== 'undefined') {
       defaultTargetSide: 'player',
       log,
     });
-    return { board: recalcBoardPassiveScaling(result.playerBoard, ctx), energyGain: result.energyGain };
+    return {
+      board: recalcBoardPassiveScaling(result.playerBoard, ctx),
+      energyGain: result.energyGain,
+      commands: [...(result.commands || [])],
+    };
   }
 
   // applyTurnEndEffects: 自盤面の on_turn_end 処理。opposingBoardIn を渡すと cross-board 効果も処理。
@@ -11027,8 +11072,7 @@ if (typeof window !== 'undefined') {
     let enemyBoard = { ...ctx.enemyBoard };
     let playerHearts = ctx.playerHearts;
     let enemyHP = ctx.enemyHP;
-    let drawCount = 0;
-    let zeroCostDrawCount = 0;
+    const commands = [];
     let evolveEnergyPlus = 0;
     let energyPlus = 0;
     let energyGain = 0;
@@ -11062,9 +11106,11 @@ if (typeof window !== 'undefined') {
         hand: ctx.hand,
         deck: ctx.deck,
         discard: ctx.discard,
-        // ここまでの効果で確定したドロー枚数。実際の手札への追加は呼び出し側（UI）が行うため、
-        // 後続の効果が「ドロー後の手札」を前提にできるよう、枚数だけを先に渡す。
-        pendingDrawCount: drawCount,
+        // カード領域の変更はCommandとして蓄積する。後続効果の成立判定では、
+        // まだ実行していないDrawCommandの合計だけを読み取る。
+        pendingDrawCount: commands.reduce((total, command) => (
+          command?.type === 'DrawCommand' ? total + Math.max(0, num(command.value ?? command.count)) : total
+        ), 0),
         battleModifiers,
         isSpell: true,
         source: spell,
@@ -11074,8 +11120,7 @@ if (typeof window !== 'undefined') {
       enemyBoard = result.enemyBoard ?? enemyBoard;
       playerHearts = result.playerHearts ?? playerHearts;
       enemyHP = result.enemyHP ?? enemyHP;
-      drawCount += num(result.drawCount);
-      zeroCostDrawCount += num(result.zeroCostDrawCount);
+      commands.push(...(result.commands || []));
       evolveEnergyPlus += num(result.evolveEnergyPlus);
       energyPlus += num(result.energyPlus);
       energyGain += num(result.energyGain);
@@ -11090,7 +11135,7 @@ if (typeof window !== 'undefined') {
       }
       if (result.request?.type === 'EvolutionSelectionRequest') {
         return {
-          playerBoard, enemyBoard, playerHearts, enemyHP, drawCount, zeroCostDrawCount, evolveEnergyPlus, energyPlus, energyGain,
+          playerBoard, enemyBoard, playerHearts, enemyHP, commands, evolveEnergyPlus, energyPlus, energyGain,
           resetSpellBoost, battleModifiers, spellLastHitKey: lastHitKeys.at(-1) || null,
           evolutionRequest: {
             targetSide: result.request.targetSide,
@@ -11111,14 +11156,14 @@ if (typeof window !== 'undefined') {
       }
       if (result.request?.type === 'ReviveSelectionRequest') {
         return {
-          playerBoard, enemyBoard, playerHearts, enemyHP, drawCount, zeroCostDrawCount, evolveEnergyPlus, energyPlus, energyGain,
+          playerBoard, enemyBoard, playerHearts, enemyHP, commands, evolveEnergyPlus, energyPlus, energyGain,
           resetSpellBoost, battleModifiers, spellLastHitKey: lastHitKeys.at(-1) || null,
           reviveRequest: result.request,
         };
       }
       if (result.request?.type === 'CardZoneMoveSelectionRequest') {
         return {
-          playerBoard, enemyBoard, playerHearts, enemyHP, drawCount, zeroCostDrawCount, evolveEnergyPlus, energyPlus, energyGain,
+          playerBoard, enemyBoard, playerHearts, enemyHP, commands, evolveEnergyPlus, energyPlus, energyGain,
           resetSpellBoost, battleModifiers, spellLastHitKey: lastHitKeys.at(-1) || null,
           cardZoneMoveRequest: {
             ...result.request,
@@ -11147,8 +11192,7 @@ if (typeof window !== 'undefined') {
       enemyBoard,
       playerHearts,
       enemyHP,
-      drawCount,
-      zeroCostDrawCount,
+      commands,
       evolveEnergyPlus,
       energyPlus,
       spellLastHitKey: lastHitKeys.at(-1) || null,
@@ -11169,8 +11213,7 @@ if (typeof window !== 'undefined') {
         enemyBoard: ctx.enemyBoard,
         playerHearts: ctx.playerHearts,
         enemyHP: ctx.enemyHP,
-        drawCount: 0,
-        zeroCostDrawCount: 0,
+        commands: [],
         evolveEnergyPlus: 0,
         energyPlus: 0,
         spellLastHitKey: ctx.spellContext?.lastHitKey || null,
@@ -11193,8 +11236,7 @@ if (typeof window !== 'undefined') {
       enemyBoard: next.enemyBoard ?? previous.enemyBoard,
       playerHearts: next.playerHearts ?? previous.playerHearts,
       enemyHP: next.enemyHP ?? previous.enemyHP,
-      drawCount: num(previous.drawCount) + num(next.drawCount),
-      zeroCostDrawCount: num(previous.zeroCostDrawCount) + num(next.zeroCostDrawCount),
+      commands: [...(previous.commands || []), ...(next.commands || [])],
       evolveEnergyPlus: num(previous.evolveEnergyPlus) + num(next.evolveEnergyPlus),
       energyPlus: num(previous.energyPlus) + num(next.energyPlus),
       energyGain: num(previous.energyGain) + num(next.energyGain),
@@ -11217,13 +11259,10 @@ if (typeof window !== 'undefined') {
     if (Number.isFinite(Number(next.playerHearts))) state.playerHearts = Number(next.playerHearts);
     if (Number.isFinite(Number(next.enemyHP))) state.enemyHP = Number(next.enemyHP);
     state.commands.push(...(next.commands || []));
-    state.drawCount += num(next.drawCount);
-    state.zeroCostDrawCount += num(next.zeroCostDrawCount);
     state.energyPlus += num(next.energyPlus);
     state.energyGain += num(next.energyGain);
     state.evolveEnergyPlus += num(next.evolveEnergyPlus);
     state.firstDrawPlus += num(next.firstDrawPlus);
-    state.generatedCards.push(...(next.generatedCards || []));
     state.extraActions += num(next.extraActions);
     state.healedBaseAmount += num(next.healedBaseAmount);
     state.counterCommands.push(...(next.counterCommands || []));
@@ -11249,13 +11288,10 @@ if (typeof window !== 'undefined') {
       playerHearts: initial.playerHearts ?? ctx.playerHearts,
       enemyHP: initial.enemyHP ?? ctx.enemyHP,
       commands: [...(initial.commands || [])],
-      drawCount: num(initial.drawCount),
-      zeroCostDrawCount: num(initial.zeroCostDrawCount),
       energyPlus: num(initial.energyPlus),
       energyGain: num(initial.energyGain),
       evolveEnergyPlus: num(initial.evolveEnergyPlus),
       firstDrawPlus: num(initial.firstDrawPlus),
-      generatedCards: [...(initial.generatedCards || [])],
       extraActions: num(initial.extraActions),
       healedBaseAmount: num(initial.healedBaseAmount),
       counterCommands: [...(initial.counterCommands || [])],
@@ -12211,11 +12247,9 @@ if (typeof window !== 'undefined') {
   }
 
   const RESOURCE_EFFECT_APPLIERS = {
-    draw: (ctx, value) => ({ commands: [{ type: 'DrawCommand', value }], drawCount: value, applied: value > 0 }),
+    draw: (ctx, value) => ({ commands: [{ type: 'DrawCommand', value }], applied: value > 0 }),
     draw_and_zero_cost: (ctx, value) => ({
       commands: [{ type: 'DrawCommand', value, costOverride: 0, duration: ctx.effect.durationType || 'this_turn' }],
-      drawCount: value,
-      zeroCostDrawCount: value,
       applied: value > 0,
     }),
     energy_plus: (ctx, value) => {
@@ -12279,26 +12313,22 @@ if (typeof window !== 'undefined') {
   // 捨て札→山札と巡ったあとも下がったままになり、巡回のたびに際限なく下がる。
   function resolveHandCostDown(ctx) {
     if (!Array.isArray(ctx.hand)) throw new Error('cost_downにはhandが必要です');
-    if (ctx.hand.length === 0) return { playerBoard: ctx.playerBoard, enemyBoard: ctx.enemyBoard, hand: ctx.hand, applied: false, targetKeys: [], commands: [] };
+    if (ctx.hand.length === 0) return { playerBoard: ctx.playerBoard, enemyBoard: ctx.enemyBoard, applied: false, targetKeys: [], commands: [] };
     // 持続期間はデータ（duration_type）で決める。手札の一時コストはターン終了時に
     // まとめて戻る仕組みのため、現状表現できるのは this_turn のみ。
     if (ctx.effect.durationType !== 'this_turn') {
       console.error(`[Effect] cost_down は duration_type=this_turn のみ対応しています: ${ctx.effect.durationType || '(空欄)'}`);
-      return { playerBoard: ctx.playerBoard, enemyBoard: ctx.enemyBoard, hand: ctx.hand, applied: false, targetKeys: [], commands: [] };
+      return { playerBoard: ctx.playerBoard, enemyBoard: ctx.enemyBoard, applied: false, targetKeys: [], commands: [] };
     }
     const random = typeof ctx.random === 'function' ? ctx.random : Math.random;
     const index = Math.min(ctx.hand.length - 1, Math.floor(random() * ctx.hand.length));
     const value = Math.max(0, num(ctx.effect.value));
-    const hand = ctx.hand.map((card, i) => (
-      i === index ? window.Deck.applyTemporaryCostDelta(card, value, ctx.battleTurn) : card
-    ));
     return {
       playerBoard: ctx.playerBoard,
       enemyBoard: ctx.enemyBoard,
-      hand,
       applied: true,
       targetKeys: [],
-      commands: [{ type: 'ModifyHandCostCommand', cardUid: hand[index]?.uid || null, value: -value }],
+      commands: [{ type: 'ModifyHandCostCommand', cardUid: ctx.hand[index]?.uid || null, reduction: value }],
     };
   }
 
@@ -15659,6 +15689,137 @@ if (typeof window !== 'undefined') {
 })();
 </script>
 
+<!-- ============ card_zone_commands.js (inline) ============ -->
+<!-- 手札・山札・捨て札を変更するCommandの実行時期と処理を集約 -->
+<script>
+(function () {
+  function executeDrawCommand(state, command, context) {
+    const count = Math.max(0, Math.floor(Number(command.value ?? command.count) || 0));
+    if (count === 0) return state;
+    const drawn = window.Deck.drawCards(count, state.deck, state.discard);
+    const costOverride = Number(command.costOverride);
+    const drawnHand = Number.isFinite(costOverride)
+      ? window.Deck.applyTemporaryCostOverride(drawn.hand, count, costOverride, context.battleTurn)
+      : drawn.hand;
+    return {
+      ...state,
+      hand: [...state.hand, ...drawnHand],
+      deck: drawn.deck,
+      discard: drawn.discard,
+    };
+  }
+
+  function executeAddCardToHandCommand(state, command, context) {
+    const count = Math.max(0, Math.floor(Number(command.count ?? 1) || 0));
+    if (count === 0) return state;
+    const cards = Array.from(
+      { length: count },
+      (_, index) => createGeneratedCard(command, index, context.createUid),
+    );
+    return { ...state, hand: [...state.hand, ...cards] };
+  }
+
+  function executeModifyHandCostCommand(state, command, context) {
+    const cardUid = command.cardUid || null;
+    const reduction = Math.max(0, Number(command.reduction) || 0);
+    if (!cardUid || reduction === 0) return state;
+    return {
+      ...state,
+      hand: state.hand.map(card => (
+        card?.uid === cardUid
+          ? window.Deck.applyTemporaryCostDelta(card, reduction, context.battleTurn)
+          : card
+      )),
+    };
+  }
+
+  const COMMAND_DEFINITIONS = Object.freeze({
+    DrawCommand: Object.freeze({ deployPolicy: 'defer', execute: executeDrawCommand }),
+    AddCardToHandCommand: Object.freeze({ deployPolicy: 'defer', execute: executeAddCardToHandCommand }),
+    ModifyHandCostCommand: Object.freeze({ deployPolicy: 'defer', execute: executeModifyHandCostCommand }),
+  });
+
+  function getCommandDefinition(command) {
+    return command && command.type ? COMMAND_DEFINITIONS[command.type] || null : null;
+  }
+
+  function getCardZoneCommands(commands) {
+    return (Array.isArray(commands) ? commands : []).filter(command => getCommandDefinition(command));
+  }
+
+  function splitCommands(commands) {
+    const cardZone = [];
+    const remaining = [];
+    (Array.isArray(commands) ? commands : []).forEach(command => {
+      if (getCommandDefinition(command)) cardZone.push({ ...command });
+      else remaining.push(command);
+    });
+    return { cardZone, remaining };
+  }
+
+  function partitionForPhase(commands, phase) {
+    const immediate = [];
+    const deferred = [];
+    getCardZoneCommands(commands).forEach(command => {
+      const definition = getCommandDefinition(command);
+      if (phase === 'deploy' && definition.deployPolicy === 'defer') deferred.push({ ...command });
+      else immediate.push({ ...command });
+    });
+    return { immediate, deferred };
+  }
+
+  function createGeneratedCard(command, index, createUid) {
+    if (command.card && typeof command.card === 'object') {
+      return window.DeckRuntime.createDeckCard(command.card, {
+        uid: command.card.uid || createUid(command, index),
+      });
+    }
+    const cardId = command.cardId;
+    const definition = [...(window.FOLLOWERS || []), ...(window.SPELLS || [])]
+      .find(card => card && card.id === cardId);
+    if (!definition) throw new Error(`AddCardToHandCommandのcard_idが未定義です: ${cardId || '?'}`);
+    return window.DeckRuntime.createDeckCard(definition, { uid: createUid(command, index) });
+  }
+
+  function execute(zoneState, commands, context = {}) {
+    const drawCards = window.Deck?.drawCards;
+    const applyTemporaryCostOverride = window.Deck?.applyTemporaryCostOverride;
+    const applyTemporaryCostDelta = window.Deck?.applyTemporaryCostDelta;
+    if (
+      typeof drawCards !== 'function'
+      || typeof applyTemporaryCostOverride !== 'function'
+      || typeof applyTemporaryCostDelta !== 'function'
+    ) {
+      throw new Error('CardZoneCommandsの実行に必要なDeck APIがありません');
+    }
+    const createUid = typeof context.createUid === 'function'
+      ? context.createUid
+      : ((command, index) => `generated_${command.cardId || 'card'}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}_${index}`);
+    let state = {
+      hand: [...(zoneState.hand || [])],
+      deck: [...(zoneState.deck || [])],
+      discard: [...(zoneState.discard || [])],
+      exiled: [...(zoneState.exiled || [])],
+    };
+
+    getCardZoneCommands(commands).forEach(command => {
+      const definition = getCommandDefinition(command);
+      state = definition.execute(state, command, { ...context, createUid });
+    });
+    return state;
+  }
+
+  window.CardZoneCommands = {
+    COMMAND_DEFINITIONS,
+    getCommandDefinition,
+    getCardZoneCommands,
+    splitCommands,
+    partitionForPhase,
+    execute,
+  };
+})();
+</script>
+
 <!-- ============ relic_service.js (inline) ============ -->
 <!-- レリックの取得時効果・使い切り・出現条件を集約 -->
 <script>
@@ -18689,6 +18850,11 @@ const { getFirstWaveIndex, spawnWave } = window.Spawn;
 const { getRemovedBoardUnits, resolveTurnStartState, resolveBattleTurn } = window.BattleTurn;
 const { shuffle, drawCards, applyTemporaryCostOverride, clearTemporaryCardCost } = window.Deck;
 const { restoreBoardUnitToDeckCard } = window.DeckRuntime;
+const {
+  splitCommands: splitCardZoneCommands,
+  partitionForPhase: partitionCardZoneCommandsForPhase,
+  execute: executeCardZoneCommands,
+} = window.CardZoneCommands;
 const EnemyActionRuntime = window.EnemyActionRuntime;
 
 const MAX_ENERGY    = 3;
@@ -19508,10 +19674,6 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
     : window.PlayerLife.clamp(window.GameParams.getPlayerStartingHearts(), PLAYER_RUN_MAX_HEARTS);
   const battleRelicEffects = getBattleRelicEffects(runState);
 
-  // レリック所持チェック（直接ownership方式）
-  const ownedRelicIds = new Set(((runState && runState.relics) || []).map(r => r && r.id).filter(Boolean));
-  const hasRelic = (id) => ownedRelicIds.has(id);
-
   // 初回デッキ生成＋初期 wave 状態は1回だけ
   const _init = uR(null);
   if (!_init.current) {
@@ -19576,6 +19738,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
   const [discard,     setDiscard]     = uS([]);
   const [graveyard,   setGraveyard]   = uS([]);
   const [exiled,      setExiled]      = uS([]); // フォロワー召喚で消費したカード（再ドロー不可）
+  const [pendingDeployCardCommands, setPendingDeployCardCommands] = uS([]);
   const [energy,      setEnergy]      = uS(DEPLOY_ENERGY + _init.current.deployEnergyBonus);
   const [evolveEnergy, setEvolveEnergy] = uS(_init.current.battleStartEvolveEnergyBonus);
   const [playerSummonCountTotal, setPlayerSummonCountTotal] = uS(0);
@@ -19638,9 +19801,6 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
   const handPointerDragRef = uR(null);
   const handPointerSourceRef = uR(null);
   const suppressNextHandClickRef = uR(false);
-  // レリック固有状態
-  const [angelsTearsUsed, setAngelsTearsUsed] = uS(false); // 天使の涙：バトル内1回のみ
-  const [cardsUsedThisTurn, setCardsUsedThisTurn] = uS(0); // コンボディクショナリー用カウンタ
   // スペルブーストシステム
   const [spellBoostCount, setSpellBoostCount] = uS(0); // ターン内の獲得総数（強化で消費しても減らない）
   const [spellBoostAmount, setSpellBoostAmount] = uS(0); // 現在使用可能なスペルブースト残量
@@ -20190,20 +20350,15 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
     return [];
   };
 
-  // posKey にいるユニットを進化エナジーで進化させられるか（天使の涙コスト割引考慮）
+  // posKey にいるユニットを進化エナジーで進化させられるか
   const canEvolveAt = (posKey) => {
     const choices = getEvolutionChoicesAt(posKey);
     if (!choices || choices.length === 0) return false;
     if (isEvolutionCardMode()) {
       return !!(selectedCard && hasEvolutionEffect(selectedCard) && canPayCardCost(selectedCard));
     }
-    return choices.some(choice => {
-      const bonus = (!angelsTearsUsed && hasRelic('angels_tears') && (choice.stage || 0) === 2) ? 1 : 0;
-      return evolveEnergy >= Math.max(0, (choice.evolveEnergyCost || 0) - bonus);
-    });
+    return choices.some(choice => evolveEnergy >= Math.max(0, choice.evolveEnergyCost || 0));
   };
-
-  const applyZeroCostToDrawnCards = (cards, count) => applyTemporaryCostOverride(cards, count, 0, turn);
 
   const canPayCardCost = (card) => {
     if (!card) return false;
@@ -20214,18 +20369,12 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
   //   disposition='exile'   → 除外（このバトル中再ドロー不可）
   //   disposition='discard' → 捨て札（再シャッフル対象）
   const consumeCard = (card, disposition = null, options = {}) => {
-    const addHandCards = Array.isArray(options.addHandCards) ? options.addHandCards : [];
-    let drawCount = Math.max(0, Number(options.drawCount || 0));
-    const zeroCostDrawCount = Math.max(0, Number(options.zeroCostDrawCount || 0));
+    const cardZoneCommands = [...(Array.isArray(options.cardZoneCommands) ? options.cardZoneCommands : [])];
     const sourceDeck = Array.isArray(options.deckOverride) ? options.deckOverride : deck;
     const sourceDiscard = Array.isArray(options.discardOverride) ? options.discardOverride : discard;
     const sourceHand = Array.isArray(options.handOverride) ? options.handOverride : hand;
     const sourceExiled = Array.isArray(options.exiledOverride) ? options.exiledOverride : exiled;
-    let nextDisposition = disposition || getCardUseDisposition(card);
-    // 不滅の紋章：廃棄スペルカードが50%の確率で墓地送りになる
-    if (nextDisposition === 'exile' && card && card.cardType === 'spell' && hasRelic('undying_sigil')) {
-      if (Math.random() < 0.5) nextDisposition = 'discard';
-    }
+    const nextDisposition = disposition || getCardUseDisposition(card);
     const payment = resolveCardCostPayment(card, { playerHearts, energy });
     if (!payment.canPay) throw new Error(`カードコストを支払えません: card_id=${card.cardId || card.id || '?'}`);
     if (payment.paymentResource === 'player_heart') {
@@ -20239,42 +20388,25 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
     setPendingCardZoneMove(null);
     setPendingFormationMove(null);
 
-    // コンボディクショナリーとeffectによるドローを、カード移動後の同じ山札状態で解決する。
-    if (phase === 'player') {
-      const nextCount = cardsUsedThisTurn + 1;
-      setCardsUsedThisTurn(nextCount);
-      if (nextCount === 4 && hasRelic('combo_dictionary')) {
-        drawCount += 1;
-      }
-    }
-
-    if (drawCount > 0) {
-      const consumedCard = clearTemporaryCardCost(card);
-      const nextDiscardForDraw = nextDisposition === 'discard' ? [...sourceDiscard, consumedCard] : [...sourceDiscard];
-      const drawn = drawCards(drawCount, sourceDeck, nextDiscardForDraw);
-      const drawnHand = applyZeroCostToDrawnCards(drawn.hand, zeroCostDrawCount);
-      setHand([...sourceHand.filter(c => c.uid !== card.uid), ...drawnHand, ...addHandCards]);
-      setDeck(nextDisposition === 'deck_top' ? [consumedCard, ...drawn.deck] : drawn.deck);
-      setDiscard(drawn.discard);
-      setExiled(nextDisposition === 'exile' ? [...sourceExiled, consumedCard] : sourceExiled);
-      return;
-    }
-
-    setHand([...sourceHand.filter(c => c.uid !== card.uid), ...addHandCards]);
     const consumedCard = clearTemporaryCardCost(card);
-    if (nextDisposition === 'exile') {
-      setExiled([...sourceExiled, consumedCard]);
-      setDiscard(sourceDiscard);
-      setDeck(sourceDeck);
-    } else if (nextDisposition === 'deck_top') {
-      setDeck([consumedCard, ...sourceDeck]);
-      setDiscard(sourceDiscard);
-      setExiled(sourceExiled);
-    } else {
-      setDiscard([...sourceDiscard, consumedCard]);
-      setDeck(sourceDeck);
-      setExiled(sourceExiled);
+    let nextZoneState = {
+      hand: sourceHand.filter(c => c.uid !== card.uid),
+      deck: nextDisposition === 'deck_top' ? [consumedCard, ...sourceDeck] : sourceDeck,
+      discard: nextDisposition === 'discard' ? [...sourceDiscard, consumedCard] : sourceDiscard,
+      exiled: nextDisposition === 'exile' ? [...sourceExiled, consumedCard] : sourceExiled,
+    };
+
+    const commandPlan = partitionCardZoneCommandsForPhase(cardZoneCommands, phase);
+    if (commandPlan.deferred.length > 0) {
+      setPendingDeployCardCommands(prev => [...prev, ...commandPlan.deferred]);
     }
+    if (commandPlan.immediate.length > 0) {
+      nextZoneState = executeCardZoneCommands(nextZoneState, commandPlan.immediate, { battleTurn: turn });
+    }
+    setHand(nextZoneState.hand);
+    setDeck(nextZoneState.deck);
+    setDiscard(nextZoneState.discard);
+    setExiled(nextZoneState.exiled);
   };
 
   const performFormationMove = (sourcePosKey, destPosKey) => {
@@ -20526,7 +20658,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
     setPlayerBoard(applyUnityCountToPlayerBoard(applied.selfBoard, nextSummonCount));
     setEnemyBoard(applied.enemyBoard);
     setGraveyard(prev => prev.filter(card => card.uid !== graveCard.uid));
-    consumeCard(selectedCard);
+    consumeCard(selectedCard, null, { cardZoneCommands: applied.commands });
     if (window.SFX && window.SFX.place) window.SFX.place();
   };
 
@@ -20544,8 +20676,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
     let localBoostAmount = spellBoostAmount;
     let localBattleModifiers = battleModifiers;
     let energyGainTotal = 0;
-    let drawCountTotal = 0;
-    const drawPlans = [];
+    const cardZoneCommands = [];
     const castUids = [];
     const exileCards = [];
     const discardCards = [];
@@ -20613,11 +20744,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
       if (typeof result.playerHearts === 'number') pHearts = result.playerHearts;
       if (Array.isArray(result.battleModifiers)) localBattleModifiers = result.battleModifiers;
       energyGainTotal += (result.energyGain || 0) + (result.energyPlus || 0);
-      drawCountTotal += (result.drawCount || 0) + (sb.drawCount || 0);
-      if ((result.drawCount || 0) > 0) {
-        drawPlans.push({ count: result.drawCount, zeroCostCount: result.zeroCostDrawCount || 0 });
-      }
-      if ((sb.drawCount || 0) > 0) drawPlans.push({ count: sb.drawCount, zeroCostCount: 0 });
+      cardZoneCommands.push(...(result.commands || []), ...(sb.commands || []));
       castUids.push(spell.uid);
       if (getCardUseDisposition(spell) === 'exile') exileCards.push({ ...spell });
       else discardCards.push({ ...spell });
@@ -20634,24 +20761,16 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
     if (pHearts !== playerHearts) setPlayerHearts(pHearts);
     if (energyGainTotal > 0) setEnergy(prev => prev + energyGainTotal);
     if (castUids.length > 0) {
-      if (drawCountTotal > 0) {
-        let drawDeck = deck;
-        let drawDiscard = [...discard, ...discardCards];
-        const drawnHand = [];
-        drawPlans.forEach(plan => {
-          const drawn = drawCards(plan.count, drawDeck, drawDiscard);
-          drawnHand.push(...applyZeroCostToDrawnCards(drawn.hand, plan.zeroCostCount));
-          drawDeck = drawn.deck;
-          drawDiscard = drawn.discard;
-        });
-        setHand(prev => [...prev.filter(c => !castUids.includes(c.uid)), ...drawnHand]);
-        setDeck(drawDeck);
-        setDiscard(drawDiscard);
-      } else {
-        setHand(prev => prev.filter(c => !castUids.includes(c.uid)));
-        if (discardCards.length) setDiscard(prev => [...prev, ...discardCards]);
-      }
-      if (exileCards.length) setExiled(prev => [...prev, ...exileCards]);
+      const resolvedZones = executeCardZoneCommands({
+        hand: hand.filter(card => !castUids.includes(card.uid)),
+        deck,
+        discard: [...discard, ...discardCards],
+        exiled: [...exiled, ...exileCards],
+      }, cardZoneCommands, { battleTurn: turn });
+      setHand(resolvedZones.hand);
+      setDeck(resolvedZones.deck);
+      setDiscard(resolvedZones.discard);
+      setExiled(resolvedZones.exiled);
     }
     if (log.length) console.log('[Illusionist]', log);
   };
@@ -20690,15 +20809,8 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
       }
     }
     // フォロワー召喚は除外（このバトル中に再ドローしない）
-    consumeCard(card, null, { addHandCards: applied.generatedCards });
+    consumeCard(card, null, { cardZoneCommands: applied.commands });
     if (window.SFX && window.SFX.place) window.SFX.place();
-  };
-
-  // 天使の涙：ステージ2→3（currentStage===1 → stage===2）コスト-1（バトル内1回）
-  const getAngelsTearsCostBonus = (evo) => {
-    if (!hasRelic('angels_tears') || angelsTearsUsed) return 0;
-    if (evo && (evo.stage || 0) === 2) return 1; // stage2 = 2nd evolution (base→1st→2nd)
-    return 0;
   };
 
   const applyEvolutionChoice = (posKey, evo) => {
@@ -20706,8 +20818,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
     if (!evo) return;
     const useEvolutionCard = isEvolutionCardMode() && evolutionPicker && evolutionPicker.useEvolutionCard;
     const evolutionSpell = useEvolutionCard ? (evolutionPicker.sourceSpell || selectedCard) : null;
-    const angelsBonus = getAngelsTearsCostBonus(evo);
-    const effectiveCost = useEvolutionCard ? 0 : Math.max(0, (evo.evolveEnergyCost || 0) - angelsBonus);
+    const effectiveCost = useEvolutionCard ? 0 : Math.max(0, evo.evolveEnergyCost || 0);
     if (useEvolutionCard && (!evolutionSpell || !canPayCardCost(evolutionSpell))) return;
     if (!useEvolutionCard && evolveEnergy < effectiveCost) return;
 
@@ -20719,6 +20830,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
     const nextBoard = { ...playerBoard, [posKey]: newInst };
     const applied = applyDeployEffects(nextBoard, enemyBoard, posKey, [], { spellBoostCount: spellBoostAmount, battleTurn: turn });
     const evolved = applyEvolutionEffects(applied.selfBoard, posKey, [], { battleTurn: turn });
+    const evolutionCardZoneCommands = [...(applied.commands || []), ...(evolved.commands || [])];
     let finalPlayerBoard = applyUnityCountToPlayerBoard(evolved.board, playerSummonCountTotal, nextEvolutionCount);
     let finalEnemyBoard = applied.enemyBoard;
     if (evolved.energyGain > 0) setEnergy(prev => prev + evolved.energyGain);
@@ -20763,7 +20875,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
             setEvolveEnergy(prev => Math.max(0, prev + continuedSpellResult.evolveEnergyPlus));
           }
           if (continuedSpellResult.resetSpellBoost) {
-            setSpellBoostAmount(hasRelic('solomons_staff') ? 1 : 0);
+            setSpellBoostAmount(0);
           }
           if (continuedSpellResult.returnedUnit) {
             const returnedCard = buildEternalReturnCard(continuedSpellResult.returnedUnit);
@@ -20775,13 +20887,21 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
       const sbResult = fireSpellCastTriggers(finalPlayerBoard, finalEnemyBoard, null);
       finalPlayerBoard = sbResult.playerBoard;
       finalEnemyBoard = sbResult.enemyBoard;
-      consumeCard(evolutionSpell, null, { addHandCards: applied.generatedCards });
+      evolutionCardZoneCommands.push(
+        ...(continuedSpellResult?.commands || []),
+        ...(sbResult.commands || []),
+      );
+      consumeCard(evolutionSpell, null, { cardZoneCommands: evolutionCardZoneCommands });
     } else {
       setEvolveEnergy(prev => Math.max(0, prev - effectiveCost));
-      if (angelsBonus > 0) setAngelsTearsUsed(true);
       setSelectedUid(null);
-      if (applied.generatedCards && applied.generatedCards.length > 0) {
-        setHand(prev => [...prev, ...applied.generatedCards]);
+      const commandPlan = partitionCardZoneCommandsForPhase(evolutionCardZoneCommands, phase);
+      if (commandPlan.immediate.length > 0) {
+        const resolvedZones = executeCardZoneCommands({ hand, deck, discard, exiled }, commandPlan.immediate, { battleTurn: turn });
+        setHand(resolvedZones.hand);
+        setDeck(resolvedZones.deck);
+        setDiscard(resolvedZones.discard);
+        setExiled(resolvedZones.exiled);
       }
     }
     setBattleEvolutionCount(nextEvolutionCount);
@@ -20881,19 +21001,12 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
   // スペル発動の判定＋適用
   const getCurrentSpellZoneState = () => ({ hand, deck, discard, exiled });
 
-  const materializePendingSpellDraws = (spell, result, zoneState) => {
-    const drawCount = Math.max(0, Number(result.drawCount || 0));
-    if (drawCount === 0) return { result, zoneState };
-    const drawn = drawCards(drawCount, zoneState.deck, zoneState.discard);
-    const drawnHand = applyZeroCostToDrawnCards(drawn.hand, result.zeroCostDrawCount || 0);
+  const materializePendingCardZoneCommands = (result, zoneState) => {
+    const split = splitCardZoneCommands(result.commands);
+    if (split.cardZone.length === 0) return { result, zoneState };
     return {
-      result: { ...result, drawCount: 0, zeroCostDrawCount: 0 },
-      zoneState: {
-        ...zoneState,
-        hand: [...zoneState.hand, ...drawnHand],
-        deck: drawn.deck,
-        discard: drawn.discard,
-      },
+      result: { ...result, commands: split.remaining },
+      zoneState: executeCardZoneCommands(zoneState, split.cardZone, { battleTurn: turn }),
     };
   };
 
@@ -20911,11 +21024,10 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
       const returnedCard = buildEternalReturnCard(result.returnedUnit);
       zoneState = { ...zoneState, deck: insertCardAtBottom(zoneState.deck, returnedCard) };
     }
-    if (result.resetSpellBoost) setSpellBoostAmount(hasRelic('solomons_staff') ? 1 : 0);
+    if (result.resetSpellBoost) setSpellBoostAmount(0);
     if ((result.playerHearts || 0) !== playerHearts) setPlayerHearts(result.playerHearts);
     consumeCard(spell, null, {
-      drawCount: (result.drawCount || 0) + (sbResult.drawCount || 0),
-      zeroCostDrawCount: result.zeroCostDrawCount || 0,
+      cardZoneCommands: [...(result.commands || []), ...(sbResult.commands || [])],
       handOverride: zoneState.hand,
       deckOverride: zoneState.deck,
       discardOverride: zoneState.discard,
@@ -20980,7 +21092,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
   const advanceResolvedSpell = (spell, rawResult, initialZoneState = getCurrentSpellZoneState()) => {
     if (!rawResult) return false;
     const materialized = rawResult.cardZoneMoveRequest
-      ? materializePendingSpellDraws(spell, rawResult, initialZoneState)
+      ? materializePendingCardZoneCommands(rawResult, initialZoneState)
       : { result: rawResult, zoneState: initialZoneState };
     const result = materialized.result;
     const zoneState = materialized.zoneState;
@@ -21307,26 +21419,32 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
     if (phase !== 'deploy' || combatAnimating) return;
     const drawPerTurn = getDrawCountPerTurn(battleRelicEffects);
     const drawn = drawCards(drawPerTurn + _init.current.firstDrawBonus, deck, hand);
+    const resolvedZones = executeCardZoneCommands({
+      hand: drawn.hand,
+      deck: drawn.deck,
+      discard: drawn.discard,
+      exiled,
+    }, pendingDeployCardCommands, { battleTurn: turn });
     const turnStart = resolveTurnStartState({
       playerBoard,
       enemyBoard,
-      hand: drawn.hand,
+      hand: resolvedZones.hand,
       battleTurn: turn,
       evolveEnergyStartTurn: _init.current.evolveEnergyStartTurn,
       externalEffects: battleRelicEffects,
       includePlayerBoard: true,
     });
-    setDiscard(drawn.discard);
-    setHand(turnStart.hand || drawn.hand);
-    setDeck(drawn.deck);
+    const turnStartZones = executeCardZoneCommands(resolvedZones, turnStart.commands, { battleTurn: turn });
+    setDiscard(turnStartZones.discard);
+    setHand(turnStartZones.hand);
+    setDeck(turnStartZones.deck);
+    setExiled(turnStartZones.exiled);
+    setPendingDeployCardCommands([]);
     setPlayerBoard(turnStart.playerBoard);
     setEnemyBoard(turnStart.enemyBoard);
     setEnergy(MAX_ENERGY + _init.current.battleEnergyBonus + turnStart.energyPlus);
-    setCardsUsedThisTurn(0); // ターン開始でリセット
-    // ソロモン王の杖：ターン開始時スペルブースト+1（リセット後に1を保持）
-    const initialSpellBoost = hasRelic('solomons_staff') ? 1 : 0;
-    setSpellBoostCount(initialSpellBoost);
-    setSpellBoostAmount(initialSpellBoost);
+    setSpellBoostCount(0);
+    setSpellBoostAmount(0);
     spellLastHitKeyRef.current = null;
     setPhase('player');
   };
@@ -21452,45 +21570,26 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
       return;
     }
 
-    // 偉人のお守り：次ターン開始時、いずれかの列に1体のみなら ATK+5/maxHP+5/HP+5
-    if (hasRelic('figures_amulet')) {
-      const loneKey = COLUMNS
-        .map(column => LANES.map(lane => `${lane}_${column}`).filter(key => result.playerBoard[key]))
-        .find(keys => keys.length === 1)?.[0] || null;
-      if (loneKey) {
-        const u = result.playerBoard[loneKey];
-        const nextUnit = {
-          ...u,
-          runAtkBonus: (u.runAtkBonus || 0) + 5,
-          runHpBonus: (u.runHpBonus || 0) + 5,
-        };
-        const nextMaxHp = getPermanentMaxHp ? getPermanentMaxHp(nextUnit) + (nextUnit.dynamicHpBonus || 0) : (u.maxHp || 0) + 5;
-        result.playerBoard[loneKey] = { ...nextUnit, atk: getPermanentAtk ? getPermanentAtk(nextUnit) : (u.atk || 0), maxHp: nextMaxHp, currentHp: Math.min(nextMaxHp, (u.currentHp || 0) + 5) };
-      }
-    }
-
     const deckBeforeDraw = routedRemoved.eternalCards.length > 0
       ? shuffle([...deck, ...routedRemoved.eternalCards])
       : deck;
-    // 魔女の腕時計：ランダム手札1枚を次ターンに持ち越し
-    let _watchKept = [];
     const restoredHand = hand.map(clearTemporaryCardCost);
-    let _handForDiscard = restoredHand;
-    if (hasRelic('witchs_watch') && restoredHand.length > 0) {
-      const _wIdx = Math.floor(Math.random() * restoredHand.length);
-      _watchKept = [restoredHand[_wIdx]];
-      _handForDiscard = restoredHand.filter((_, i) => i !== _wIdx);
-    }
-    const drawn = drawCards(getDrawCountPerTurn(battleRelicEffects), deckBeforeDraw, [...discard, ..._handForDiscard]);
+    const drawn = drawCards(getDrawCountPerTurn(battleRelicEffects), deckBeforeDraw, [...discard, ...restoredHand]);
     const turnStart = resolveTurnStartState({
       playerBoard: result.playerBoard,
       enemyBoard: result.enemyBoard,
-      hand: [..._watchKept, ...drawn.hand],
+      hand: drawn.hand,
       battleTurn: result.nextTurn,
       evolveEnergyStartTurn: _init.current.evolveEnergyStartTurn,
       externalEffects: battleRelicEffects,
       includePlayerBoard: true,
     });
+    const turnStartZones = executeCardZoneCommands({
+      hand: drawn.hand,
+      deck: drawn.deck,
+      discard: drawn.discard,
+      exiled,
+    }, turnStart.commands, { battleTurn: result.nextTurn });
     setTurn(t => t + 1);
     const nextRandomSeed = createBattleRandomSeed();
     setBattleRandomState({
@@ -21506,12 +21605,12 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
         : _init.current.evolveEnergyStartTurn;
       setEvolveEnergy(prev => prev + (result.nextTurn >= startTurn ? 1 : 0));
     }
-    setHand(turnStart.hand || [..._watchKept, ...drawn.hand]);
-    setDeck(drawn.deck);
-    setDiscard(drawn.discard);
+    setHand(turnStartZones.hand);
+    setDeck(turnStartZones.deck);
+    setDiscard(turnStartZones.discard);
+    setExiled(turnStartZones.exiled);
     setCurrentEnemyWaveIndex(result.currentEnemyWaveIndex);
     setSelectedUid(null);
-    setCardsUsedThisTurn(0); // ターン開始でリセット
     setCombatAnimating(false);
   };
 
@@ -23158,25 +23257,25 @@ function getMapNodePresentation(node) {
   };
 }
 
-function MapNodeVisual({ node, isDanger, presentation }) {
+function MapNodeVisual({ node, isDanger, presentation, compact = false }) {
   if (node.type === 'boss') {
     return (
       <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', lineHeight:1 }}>
-        <div style={{ fontFamily:'Cinzel, serif', fontSize:16, fontWeight:800, letterSpacing:1, color:'#ef6b70' }}>{presentation.shortText}</div>
-        <div style={{ marginTop:4, fontSize:8, fontWeight:700, letterSpacing:1, color:'rgba(239,107,112,0.82)' }}>{presentation.fullText}</div>
+        <div style={{ fontFamily:'Cinzel, serif', fontSize:compact ? 11 : 16, fontWeight:800, letterSpacing:compact ? 0.5 : 1, color:'#ef6b70' }}>{presentation.shortText}</div>
+        <div style={{ marginTop:compact ? 2 : 4, fontSize:compact ? 6 : 8, fontWeight:700, letterSpacing:compact ? 0.5 : 1, color:'rgba(239,107,112,0.82)' }}>{presentation.fullText}</div>
       </div>
     );
   }
 
   const { iconKind } = presentation;
   const nodeText = String(presentation.shortText);
-  const nodeTextSize = nodeText.length >= 4 ? 13
-                     : nodeText.length === 3 ? 15
-                     : 18;
+  const nodeTextSize = compact
+    ? (nodeText.length >= 4 ? 8 : nodeText.length === 3 ? 9 : 11)
+    : (nodeText.length >= 4 ? 13 : nodeText.length === 3 ? 15 : 18);
   const svgProps = {
     viewBox: '0 0 32 32',
-    width: 18,
-    height: 18,
+    width: compact ? 12 : 18,
+    height: compact ? 12 : 18,
     fill: 'none',
     stroke: 'currentColor',
     strokeWidth: 1.8,
@@ -23215,7 +23314,7 @@ function MapNodeVisual({ node, isDanger, presentation }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', color:isDanger ? '#ef6b70' : 'inherit' }}>
-      <div style={{ marginBottom:3, fontSize:nodeTextSize, fontWeight:800, lineHeight:1, whiteSpace:'nowrap', letterSpacing:0.5 }}>
+      <div style={{ marginBottom:compact ? 1 : 3, fontSize:nodeTextSize, fontWeight:800, lineHeight:1, whiteSpace:'nowrap', letterSpacing:compact ? 0 : 0.5 }}>
         {nodeText}
       </div>
       {glyph}
@@ -23223,8 +23322,23 @@ function MapNodeVisual({ node, isDanger, presentation }) {
   );
 }
 
+function useMediaQuery(query) {
+  const [matches, setMatches] = React.useState(() => window.matchMedia(query).matches);
+
+  React.useEffect(() => {
+    const mediaQuery = window.matchMedia(query);
+    const handleChange = event => setMatches(event.matches);
+    setMatches(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [query]);
+
+  return matches;
+}
+
 function MapScene({ runState, onAdvance, onDebugAddCard, onDebugUnlockEvolutionGroup, onDebugAddEquipment }) {
   const map = runState.map;
+  const isMobileLandscape = useMediaQuery('(orientation: landscape) and (max-height: 600px) and (pointer: coarse)');
   const [debugCardId, setDebugCardId] = React.useState('');
   const [debugEvolutionGroupId, setDebugEvolutionGroupId] = React.useState('');
   const [debugEquipmentId, setDebugEquipmentId] = React.useState('');
@@ -23233,8 +23347,8 @@ function MapScene({ runState, onAdvance, onDebugAddCard, onDebugUnlockEvolutionG
     return <div style={{ color:'#fff', padding:24 }}>マップ生成エラー（generateMap not loaded）</div>;
   }
   const mapOpts = map.opts || { rows: 8, cols: 4 };
-  const cellW = 96;
-  const cellH = 80;
+  const cellW = isMobileLandscape ? 58 : 96;
+  const cellH = isMobileLandscape ? 48 : 80;
   const gridW = mapOpts.cols * cellW;
   const gridH = mapOpts.rows * cellH;
   const nodes = map.nodes || {};
@@ -23279,9 +23393,9 @@ function MapScene({ runState, onAdvance, onDebugAddCard, onDebugUnlockEvolutionG
       padding: '24px 24px 48px',
       color: '#efe4cd', fontFamily: '"Zen Kaku Gothic New", serif',
     }}>
-      <div style={{ fontSize: 42, letterSpacing: 4, marginBottom: 8 }}>冒険マップ</div>
+      <div className="mapScene__title" style={{ fontSize: 42, letterSpacing: 4, marginBottom: 8 }}>冒険マップ</div>
 
-      <div style={{
+      <div className="mapScene__status" style={{
         display: 'flex', gap: 24, fontSize: 13, opacity: 0.9, marginBottom: 22,
         border: '1px solid rgba(184,138,46,0.3)', padding: '10px 20px', borderRadius: 6,
         background: 'rgba(20,12,6,0.4)',
@@ -23297,7 +23411,7 @@ function MapScene({ runState, onAdvance, onDebugAddCard, onDebugUnlockEvolutionG
         <span>踏破 {runState.visitedNodeIds.length} ノード</span>
       </div>
 
-      <div style={{
+      <div className="mapScene__viewport" style={{
         width: '100%',
         maxWidth: 'calc(100vw - 48px)',
         overflowX: 'auto',
@@ -23306,8 +23420,8 @@ function MapScene({ runState, onAdvance, onDebugAddCard, onDebugUnlockEvolutionG
         display: 'flex',
         justifyContent: 'center',
       }}>
-      <div style={{ display: 'flex', gap: 18, alignItems: 'flex-start', marginBottom: 12, flex: '0 0 auto' }}>
-        <div style={{ position: 'relative', width: gridW, height: gridH, marginBottom: 12 }}>
+      <div className="mapScene__content" style={{ display: 'flex', gap: 18, alignItems: 'flex-start', marginBottom: 12, flex: '0 0 auto' }}>
+        <div className="mapScene__grid" style={{ position: 'relative', width: gridW, height: gridH, marginBottom: 12 }}>
         <svg width={gridW} height={gridH} style={{ position:'absolute', top:0, left:0, pointerEvents:'none' }}>
           {Object.entries(edges).flatMap(([fromId, dsts]) =>
             dsts.map(toId => {
@@ -23332,10 +23446,12 @@ function MapScene({ runState, onAdvance, onDebugAddCard, onDebugUnlockEvolutionG
           const isAvailable = availableSet.has(node.id);
           const isBoss      = node.type === 'boss';
           const isElite     = node.type === 'elite';
-          const left = node.col * cellW + 14;
-          const top  = (mapOpts.rows - 1 - node.row) * cellH + 10;
-          const w = cellW - 28;
-          const h = cellH - 20;
+          const horizontalInset = isMobileLandscape ? 8 : 14;
+          const verticalInset = isMobileLandscape ? 6 : 10;
+          const left = node.col * cellW + horizontalInset;
+          const top  = (mapOpts.rows - 1 - node.row) * cellH + verticalInset;
+          const w = cellW - horizontalInset * 2;
+          const h = cellH - verticalInset * 2;
           const baseBorder = isBoss ? 'rgba(200,37,43,0.6)'
                             : isElite ? 'rgba(200,37,43,0.4)'
                             : 'rgba(184,138,46,0.3)';
@@ -23358,22 +23474,22 @@ function MapScene({ runState, onAdvance, onDebugAddCard, onDebugUnlockEvolutionG
               title={presentation.fullText}
               style={{
                 position:'absolute', left, top, width: w, height: h,
-                padding: '6px 4px', textAlign: 'center',
+                padding: isMobileLandscape ? '3px 2px' : '6px 4px', textAlign: 'center',
                 border, background: bg, color,
-                borderRadius: 4,
+                borderRadius: isMobileLandscape ? 3 : 4,
                 cursor: isAvailable ? 'pointer' : 'default',
                 boxShadow: isCurrent ? '0 0 14px rgba(236,207,126,0.4)'
                           : isAvailable ? '0 0 8px rgba(236,207,126,0.25)'
                           : 'none',
                 fontFamily: '"Zen Kaku Gothic New", serif',
               }}>
-              <MapNodeVisual node={node} isDanger={(isBoss || isElite) && !isVisited} presentation={presentation} />
+              <MapNodeVisual node={node} isDanger={(isBoss || isElite) && !isVisited} presentation={presentation} compact={isMobileLandscape} />
             </button>
           );
         })}
         </div>
 
-        <div style={{
+        <div className="mapScene__debugPanel" style={{
           width: 300,
           display: 'flex',
           flexDirection: 'column',
@@ -23501,7 +23617,7 @@ function MapScene({ runState, onAdvance, onDebugAddCard, onDebugUnlockEvolutionG
       </div>
       </div>
 
-      <div style={{ fontSize:11, opacity:0.5, marginBottom:14, letterSpacing:2 }}>
+      <div className="mapScene__guide" style={{ fontSize:11, opacity:0.5, marginBottom:14, letterSpacing:2 }}>
         {runState.currentNodeId === null
           ? '進路を選択（Row 0 のいずれかから開始）'
           : (availableSet.size === 0 ? '── 行ける道が無い ──' : `次に進む道を選択（${availableSet.size}つ）`)}
