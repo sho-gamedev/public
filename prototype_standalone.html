@@ -16133,7 +16133,10 @@ if (typeof window !== 'undefined') {
     return selectedAttributes.includes(condition);
   }
 
-  // unlock_condition：floor_cleared_N 形式。N層をクリアしていれば解禁。
+  // unlock_condition：floor_cleared_N 形式。N層をクリアした時だけ出現する。
+  // レリックの抽選はボス報酬（reward_context=boss_reward）のみで走り、
+  // その時点では applyFloorTransition がまだ走っていないため runState.floor は
+  // 「今クリアした層」を指す。よって floor_cleared_1 は1層ボス撃破時のみ成立する。
   function isUnlocked(relic, runState) {
     const condition = relic && relic.unlockCondition;
     if (!condition) return true;
@@ -16144,7 +16147,7 @@ if (typeof window !== 'undefined') {
     }
     const requiredFloor = Number(matched[1]);
     const currentFloor = Number(runState && runState.floor) || 1;
-    return currentFloor > requiredFloor;
+    return currentFloor === requiredFloor;
   }
 
   window.RelicService = Object.freeze({
