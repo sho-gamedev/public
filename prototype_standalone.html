@@ -11013,20 +11013,104 @@ if (typeof window !== 'undefined') {
     return next;
   }
 
-  function cleanupBoardAfterSpell(boardIn, log) {
-    const board = { ...boardIn };
+  // ---------- 死亡の確定と通知（戦闘・スペル共通の唯一の経路）----------
+  //
+  // 盤面から倒れたユニットを取り除き、前詰めし、「ユニットが倒れた」ことを通知する。
+  // 通知するイベントは2種類だけで、どの効果が反応するかは Effect Registry 側が解決する。
+  //   on_death      … 倒れたユニット自身の効果（死亡時召喚など）
+  //   on_ally_death … 倒れたユニットと同じ側の盤面に残っている味方の効果
+  // ここに効果IDごとの分岐を書かないこと。
+  //
+  // 戦闘（攻撃・敵行動）もスペルも必ずこの関数を通す。
+  // 以前はスペル側だけ「HP0のユニットを黙って消す」別処理になっており、
+  // スペルで倒したときに on_death / on_ally_death が発火しなかった。
+  function removeDeadUnits(board, log, deaths = null) {
+    const next = { ...board };
     POS_KEYS.forEach(k => {
-      if (board[k] && board[k].currentHp <= 0) {
-        const revived = consumeRevival(board[k], log);
+      if (next[k] && num(next[k].currentHp) <= 0) {
+        const revived = consumeRevival(next[k], log);
         if (revived) {
-          board[k] = revived;
+          next[k] = revived;
           return;
         }
-        log.push(`💀 ${board[k].name} が倒れた`);
-        board[k] = null;
+        const dead = next[k];
+        log.push(`💀 ${dead.name} が倒れた`);
+        next[k] = null;
+        if (deaths) deaths.push({ unit: dead, posKey: k });
       }
     });
-    return compactBoard(board, log).board;
+    return next;
+  }
+
+  function settleBoardOnce(board, log, deaths = null) {
+    return compactBoard(removeDeadUnits(board, log, deaths), log).board;
+  }
+
+  // 死亡イベントの連鎖上限。同じ入力から同じ結果になるよう、
+  // 通知は「陣営順（player→enemy）× POS_KEYS順」で決定的に行う。
+  const DEATH_EVENT_MAX_DEPTH = 8;
+
+  // 倒れたユニット自身の on_death 効果を解決するための sourceRef を組み立てる。
+  // 本人は既に盤面から除去済みなので、盤面走査では拾えない。
+  // dispatchEffectTrigger の external sourceRef として渡し、通常の解決パイプラインに乗せる。
+  function buildDeathSourceRef(death, side) {
+    const effects = getEffectEntries(death.unit, ['on_death']);
+    if (effects.length === 0) return null;
+    return {
+      external: true,
+      source: death.unit,
+      sourceKey: death.posKey,
+      sourceSide: side,
+      effects,
+    };
+  }
+
+  function settleBoardsWithDeathEvents(playerBoardIn, enemyBoardIn, log, ctx = {}) {
+    let playerBoard = playerBoardIn;
+    let enemyBoard = enemyBoardIn;
+    for (let depth = 0; ; depth++) {
+      const deaths = { player: [], enemy: [] };
+      playerBoard = settleBoardOnce(playerBoard, log, deaths.player);
+      enemyBoard = settleBoardOnce(enemyBoard, log, deaths.enemy);
+      if (deaths.player.length === 0 && deaths.enemy.length === 0) break;
+      if (depth >= DEATH_EVENT_MAX_DEPTH) {
+        console.error('[Effects] death event depth limit reached');
+        break;
+      }
+      ['player', 'enemy'].forEach(side => {
+        deaths[side].forEach(death => {
+          const deathContext = {
+            ...ctx,
+            defaultTargetSide: side === 'player' ? 'enemy' : 'player',
+            deadUnit: death.unit,
+            deadSide: side,
+            deadPosKey: death.posKey,
+            log,
+          };
+          const deathSourceRef = buildDeathSourceRef(death, side);
+          if (deathSourceRef) {
+            const own = dispatchEffectTrigger('on_death', {
+              ...deathContext,
+              playerBoard,
+              enemyBoard,
+              sourceRefs: [deathSourceRef],
+            });
+            playerBoard = own.playerBoard;
+            enemyBoard = own.enemyBoard;
+          }
+          const allies = dispatchEffectTrigger('on_ally_death', {
+            ...deathContext,
+            playerBoard,
+            enemyBoard,
+            includePlayerBoard: side === 'player',
+            includeEnemyBoard: side === 'enemy',
+          });
+          playerBoard = allies.playerBoard;
+          enemyBoard = allies.enemyBoard;
+        });
+      });
+    }
+    return { playerBoard, enemyBoard };
   }
 
   function swapBoardPositions(boardIn, sourceKey, destKey) {
@@ -11214,8 +11298,9 @@ if (typeof window !== 'undefined') {
       }
     }
 
-    playerBoard = recalcBoardPassiveScaling(cleanupBoardAfterSpell(playerBoard, log), ctx);
-    enemyBoard = recalcBoardPassiveScaling(cleanupBoardAfterSpell(enemyBoard, log), ctx);
+    ({ playerBoard, enemyBoard } = settleBoardsWithDeathEvents(playerBoard, enemyBoard, log, ctx));
+    playerBoard = recalcBoardPassiveScaling(playerBoard, ctx);
+    enemyBoard = recalcBoardPassiveScaling(enemyBoard, ctx);
     return {
       playerBoard,
       enemyBoard,
@@ -11461,8 +11546,9 @@ if (typeof window !== 'undefined') {
     });
 
     if (ctx.cleanupBoards === true) {
-      state.playerBoard = recalcBoardPassiveScaling(cleanupBoardAfterSpell(state.playerBoard, ctx.log || []), ctx);
-      state.enemyBoard = recalcBoardPassiveScaling(cleanupBoardAfterSpell(state.enemyBoard, ctx.log || []), ctx);
+      const settled = settleBoardsWithDeathEvents(state.playerBoard, state.enemyBoard, ctx.log || [], ctx);
+      state.playerBoard = recalcBoardPassiveScaling(settled.playerBoard, ctx);
+      state.enemyBoard = recalcBoardPassiveScaling(settled.enemyBoard, ctx);
     }
     return state;
   }
@@ -13305,6 +13391,8 @@ if (typeof window !== 'undefined') {
     decayStatus, decayStatusBoard, resolveStatusTick, applyDeployEffects,
     applyStatus, getStatus, setStatus,
     applyTurnEndEffects, applyEvolutionEffects,
+    // 死亡の確定と on_death / on_ally_death 通知。戦闘もスペルもこの経路だけを使う。
+    settleBoardsWithDeathEvents, removeDeadUnits,
     // スペル
     getSpellTargetRule, applySpell: applySpellResolved, continueSpellEffects, mergeSpellResolutionResults, resolveSpellCostPayment, resolveCardCostPayment, resolveSpellUseDisposition,
     // スペルブースト
@@ -13966,102 +14054,11 @@ if (typeof window !== 'undefined') {
 
   // HP≦0 のフォロワーを盤面から除去。
   // deaths を渡すと、倒れたユニットを { unit, posKey } の形で POS_KEYS 順に記録する。
-  function removeDead(board, log, deaths = null) {
-    const next = { ...board };
-    POS_KEYS.forEach(k => {
-      if (next[k] && next[k].currentHp <= 0) {
-        const revived = consumeRevival(next[k], log);
-        if (revived) {
-          next[k] = revived;
-          return;
-        }
-        const dead = next[k];
-        log.push(`💀 ${dead.name} が倒れた`);
-        next[k] = null;
-        if (deaths) deaths.push({ unit: dead, posKey: k });
-      }
-    });
-    return next;
-  }
-
-  function settleBoard(board, log, deaths = null) {
-    const cleaned = removeDead(board, log, deaths);
-    const promoted = promoteBackToFront(cleaned, log);
-    return promoted.board;
-  }
-
-  // 死亡イベントの連鎖上限。同じ入力から同じ結果になるよう、
-  // 通知は「陣営順（player→enemy）× POS_KEYS順」で決定的に行う。
-  const DEATH_EVENT_MAX_DEPTH = 8;
-
-  // 倒れたユニット自身の on_death 効果を解決するための sourceRef を組み立てる。
-  // 本人は既に盤面から除去済みなので、盤面走査では拾えない。
-  // dispatchEffectTrigger の external sourceRef（盤面に居ないソース）として渡すことで、
-  // 通常の効果解決パイプライン（条件→対象→ハンドラー）をそのまま通す。
-  function buildDeathSourceRef(death, side) {
-    const effects = getEffectEntries(death.unit, ['on_death']);
-    if (effects.length === 0) return null;
-    return {
-      external: true,
-      source: death.unit,
-      sourceKey: death.posKey,
-      sourceSide: side,
-      effects,
-    };
-  }
-
-  // 両盤面の掃除と「ユニットが倒れた」ことの通知をまとめて行う共通経路。
-  // 通知するイベントは2種類だけで、どの効果が反応するかは Effect Registry 側が解決する。
-  //   on_death      … 倒れたユニット自身の効果（死亡時召喚など）
-  //   on_ally_death … 倒れたユニットと同じ側の盤面に残っている味方の効果
-  // ここに効果IDごとの分岐を書かないこと。
-  function settleBoardsWithDeathEvents(playerBoardIn, enemyBoardIn, log, ctx = {}) {
-    let playerBoard = playerBoardIn;
-    let enemyBoard = enemyBoardIn;
-    for (let depth = 0; ; depth++) {
-      const deaths = { player: [], enemy: [] };
-      playerBoard = settleBoard(playerBoard, log, deaths.player);
-      enemyBoard = settleBoard(enemyBoard, log, deaths.enemy);
-      if (deaths.player.length === 0 && deaths.enemy.length === 0) break;
-      if (depth >= DEATH_EVENT_MAX_DEPTH) {
-        console.error('[Combat] death event depth limit reached');
-        break;
-      }
-      ['player', 'enemy'].forEach(side => {
-        deaths[side].forEach(death => {
-          const deathContext = {
-            ...ctx,
-            defaultTargetSide: side === 'player' ? 'enemy' : 'player',
-            deadUnit: death.unit,
-            deadSide: side,
-            deadPosKey: death.posKey,
-            log,
-          };
-          const deathSourceRef = buildDeathSourceRef(death, side);
-          if (deathSourceRef) {
-            const own = dispatchEffectTrigger('on_death', {
-              ...deathContext,
-              playerBoard,
-              enemyBoard,
-              sourceRefs: [deathSourceRef],
-            });
-            playerBoard = own.playerBoard;
-            enemyBoard = own.enemyBoard;
-          }
-          const allies = dispatchEffectTrigger('on_ally_death', {
-            ...deathContext,
-            playerBoard,
-            enemyBoard,
-            includePlayerBoard: side === 'player',
-            includeEnemyBoard: side === 'enemy',
-          });
-          playerBoard = allies.playerBoard;
-          enemyBoard = allies.enemyBoard;
-        });
-      });
-    }
-    return { playerBoard, enemyBoard };
-  }
+  // 死亡の確定と on_death / on_ally_death の通知は effects.js の共通経路が正本。
+  // 戦闘もスペルも同じ関数を通すため、ここでは再エクスポートするだけにする。
+  // （以前は combat.js とスペル側に別実装があり、スペルで倒すと通知が飛ばなかった）
+  const { settleBoardsWithDeathEvents, removeDeadUnits } = window.Effects;
+  const removeDead = removeDeadUnits;
 
   function clearTurnLimitedState(board) {
     return advanceRuntimeModifierBoard(board, 'turn_end');
