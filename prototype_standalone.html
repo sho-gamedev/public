@@ -20615,17 +20615,24 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
     const zeroesHandSpellCost = hasEff(placedInst, 'hand_spell_cost_zero');
     setPlayerBoard(applyUnityCountToPlayerBoard(applied.selfBoard, nextSummonCount));
     setEnemyBoard(applied.enemyBoard);
+
+    // 手札の書き換えはここで setHand せず、必ず consumeCard へ handOverride で渡すこと。
+    // consumeCard は hand/deck/discard/exiled をまとめて上書きコミットするため、
+    // 先に setHand しても後から握り潰される（コスト0が消える）。
+    let nextHand = hand;
     if (zeroesHandSpellCost) {
-      const sourceUid = card.uid;
-      const spellUids = hand.filter(c => c.cardType === 'spell' && c.uid !== sourceUid).map(c => c.uid);
-      if (spellUids.length > 0) {
-        setHand(prev => prev.map(c => (spellUids.includes(c.uid)
+      const targetUids = new Set(hand
+        .filter(c => c.cardType === 'spell' && c.uid !== card.uid)
+        .map(c => c.uid));
+      if (targetUids.size > 0) {
+        // 巻き戻しはターン終了時の hand.map(clearTemporaryCardCost) が一括で行う
+        nextHand = hand.map(c => (targetUids.has(c.uid)
           ? applyTemporaryCostOverride([c], 1, 0, turn)[0]
-          : c)));
+          : c));
       }
     }
     // フォロワー召喚は除外（このバトル中に再ドローしない）
-    consumeCard(card, null, { cardZoneCommands: applied.commands });
+    consumeCard(card, null, { cardZoneCommands: applied.commands, handOverride: nextHand });
     if (window.SFX && window.SFX.place) window.SFX.place();
   };
 
