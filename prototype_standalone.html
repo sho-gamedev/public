@@ -5445,7 +5445,7 @@ const EQUIPMENTS = [{"id":"iron_sword","name":"鉄の剣","shortName":"鉄の剣
 
 const REWARD_RATES = [{"context":"normal_battle","type":"unit","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"通常戦闘フォロワー報酬"},{"context":"normal_battle","type":"spell","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"通常戦闘スペル報酬"},{"context":"normal_battle","type":"evolution","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"通常戦闘進化カード報酬"},{"context":"normal_battle","type":"relic","enabled":false,"weights":{"common":0,"uncommon":0,"rare":0},"notes":"通常戦闘ではレリック報酬なし"},{"context":"elite_battle","type":"unit","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"エリート戦闘フォロワー報酬"},{"context":"elite_battle","type":"spell","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"エリート戦闘スペル報酬"},{"context":"elite_battle","type":"evolution","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"エリート戦闘進化カード報酬"},{"context":"elite_battle","type":"relic","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"エリート戦闘レリック報酬なし"},{"context":"boss_reward","type":"unit","enabled":false,"weights":{"common":0,"uncommon":0,"rare":100},"notes":"ボスフォロワー報酬"},{"context":"boss_reward","type":"spell","enabled":true,"weights":{"common":0,"uncommon":0,"rare":100},"notes":"ボススペル報酬"},{"context":"boss_reward","type":"evolution","enabled":false,"weights":{"common":0,"uncommon":0,"rare":100},"notes":"ボス進化カード報酬"},{"context":"boss_reward","type":"relic","enabled":true,"weights":{"common":0,"uncommon":0,"rare":100},"notes":"ボスレリック報酬"},{"context":"shop","type":"unit","enabled":true,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"ショップフォロワー枠"},{"context":"shop","type":"spell","enabled":true,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"ショップスペル枠"},{"context":"shop","type":"relic","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"ショップレリック枠→ショップでのレリック販売はなし"},{"context":"shop","type":"equipment","enabled":true,"weights":{"common":55,"uncommon":40,"rare":5},"notes":"ショップ装備枠"},{"context":"event_card","type":"unit","enabled":true,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"イベントフォロワー報酬"},{"context":"event_card","type":"spell","enabled":true,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"イベントスペル報酬"},{"context":"event_card","type":"evolution","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"イベント進化カード報酬"},{"context":"event_card","type":"equipment","enabled":true,"weights":{"common":55,"uncommon":40,"rare":5},"notes":null},{"context":"event_relic","type":"relic","enabled":false,"weights":{"common":60,"uncommon":35,"rare":5},"notes":"イベントレリック報酬なし"},{"context":"event_equipment","type":"equipment","enabled":true,"weights":{"common":55,"uncommon":40,"rare":5},"notes":null},{"context":"evolution_pick","type":"evolution","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"進化専用マス報酬"}];
 
-const GAME_PARAMS = [{"group":"spell_upgrade_cost_delta","key":"starter_royal","value":0,"enabled":true,"notes":"ロイヤルクラス選択時、全スペルの進化魔力コストに加算する。例：2 で全体的に+2"},{"group":"spell_upgrade_cost_delta","key":"starter_magician","value":0,"enabled":true,"notes":"マジシャンクラス選択時の補正"},{"group":"spell_upgrade_cost_delta","key":"starter_mixed","value":0,"enabled":true,"notes":"混合クラス選択時の補正"},{"group":"battle","key":"draw_per_turn","value":5,"enabled":true,"notes":"ターン開始時のドロー枚数の基準値"},{"group":"reward_card","key":"card_option_count","value":3,"enabled":true,"notes":"カード報酬の選択肢数の基準値"},{"group":"reward_relic","key":"relic_option_count","value":3,"enabled":true,"notes":"レリック報酬の選択肢数の基準値"},{"group":"player_life","key":"starting_hearts","value":7,"enabled":true,"notes":"ラン開始時のプレイヤー初期ハート数"},{"group":"player_life","key":"max_hearts","value":7,"enabled":true,"notes":"プレイヤーの基本最大ハート数"},{"group":"player_life","key":"rest_heal_hearts","value":3,"enabled":true,"notes":"休憩マスで回復するハート数"},{"group":"player_life","key":"revive_hearts","value":1,"enabled":true,"notes":"復活時に戻るハート数"},{"group":"spell_upgrade_cost_delta","key":"royal","value":0,"enabled":true,"notes":"ロイヤルをメインクラスに選択した時、全スペルの進化魔力コストに加算する"},{"group":"spell_upgrade_cost_delta","key":"magician","value":0,"enabled":true,"notes":"マジシャンをメインクラスに選択した時、全スペルの進化魔力コストに加算する"},{"group":"battle_feature","key":"super_unity_usage_limit","value":1,"enabled":true,"notes":"超団結の戦闘中使用回数の基準値"},{"group":"battle_feature","key":"magician_hand_spell_discount_usage_limit","value":1,"enabled":true,"notes":"マジシャンクラススキルの戦闘中使用回数の基準値"},{"group":"shop_card_lineup","key":"slot_count","value":3,"enabled":true,"notes":"ショップに並ぶカード枚数"},{"group":"shop_card_price","key":"common_min","value":50,"enabled":true,"notes":"コモン価格の下限"},{"group":"shop_card_price","key":"common_max","value":70,"enabled":true,"notes":"コモン価格の上限"},{"group":"shop_card_price","key":"uncommon_min","value":80,"enabled":true,"notes":"アンコモン価格の下限"},{"group":"shop_card_price","key":"uncommon_max","value":110,"enabled":true,"notes":"アンコモン価格の上限"},{"group":"shop_card_price","key":"rare_min","value":120,"enabled":true,"notes":"レア価格の下限"},{"group":"shop_card_price","key":"rare_max","value":150,"enabled":true,"notes":"レア価格の上限"},{"group":"shop_reroll","key":"price","value":50,"enabled":true,"notes":"ラインナップ一括引き直し料金"},{"group":"shop_reroll","key":"max_count","value":1,"enabled":true,"notes":"リロール回数上限"},{"group":"shop_equipment_pull","key":"pull_1_price","value":75,"enabled":true,"notes":"装備抽選1回目の料金"},{"group":"shop_equipment_pull","key":"pull_2_price","value":110,"enabled":true,"notes":"装備抽選2回目の料金"},{"group":"shop_equipment_pull","key":"pull_3_price","value":150,"enabled":true,"notes":"装備抽選3回目の料金"},{"group":"shop_equipment_pull","key":"pull_4_price","value":200,"enabled":true,"notes":"装備抽選4回目の料金"},{"group":"shop_equipment_pull","key":"max_pulls","value":4,"enabled":true,"notes":"装備抽選の回数上限"},{"group":"shop_removal","key":"price","value":75,"enabled":true,"notes":"カード除去の料金"},{"group":"shop_removal","key":"max_count","value":1,"enabled":true,"notes":"1ショップあたりのカード除去回数上限"},{"group":"shop_spell_equipment_lineup","key":"slot_count","value":3,"enabled":true,"notes":"ショップに並ぶスペル装備数"}];
+const GAME_PARAMS = [{"group":"spell_upgrade_cost_delta","key":"starter_royal","value":0,"enabled":true,"notes":"ロイヤルクラス選択時、全スペルの進化魔力コストに加算する。例：2 で全体的に+2"},{"group":"spell_upgrade_cost_delta","key":"starter_magician","value":0,"enabled":true,"notes":"マジシャンクラス選択時の補正"},{"group":"spell_upgrade_cost_delta","key":"starter_mixed","value":0,"enabled":true,"notes":"混合クラス選択時の補正"},{"group":"battle","key":"draw_per_turn","value":5,"enabled":true,"notes":"ターン開始時のドロー枚数の基準値"},{"group":"reward_card","key":"card_option_count","value":3,"enabled":true,"notes":"カード報酬の選択肢数の基準値"},{"group":"reward_relic","key":"relic_option_count","value":3,"enabled":true,"notes":"レリック報酬の選択肢数の基準値"},{"group":"player_life","key":"starting_hearts","value":7,"enabled":true,"notes":"ラン開始時のプレイヤー初期ハート数"},{"group":"player_life","key":"max_hearts","value":7,"enabled":true,"notes":"プレイヤーの基本最大ハート数"},{"group":"player_life","key":"rest_heal_hearts","value":3,"enabled":true,"notes":"休憩マスで回復するハート数"},{"group":"player_life","key":"revive_hearts","value":1,"enabled":true,"notes":"復活時に戻るハート数"},{"group":"player_life","key":"boss_clear_heal_hearts","value":7,"enabled":true,"notes":"各層のボスを倒した時に回復するハート数（最大ハートで上限クランプ。難易度モードで下げる想定）"},{"group":"spell_upgrade_cost_delta","key":"royal","value":0,"enabled":true,"notes":"ロイヤルをメインクラスに選択した時、全スペルの進化魔力コストに加算する"},{"group":"spell_upgrade_cost_delta","key":"magician","value":0,"enabled":true,"notes":"マジシャンをメインクラスに選択した時、全スペルの進化魔力コストに加算する"},{"group":"battle_feature","key":"super_unity_usage_limit","value":1,"enabled":true,"notes":"超団結の戦闘中使用回数の基準値"},{"group":"battle_feature","key":"magician_hand_spell_discount_usage_limit","value":1,"enabled":true,"notes":"マジシャンクラススキルの戦闘中使用回数の基準値"},{"group":"shop_card_lineup","key":"slot_count","value":3,"enabled":true,"notes":"ショップに並ぶカード枚数"},{"group":"shop_card_price","key":"common_min","value":50,"enabled":true,"notes":"コモン価格の下限"},{"group":"shop_card_price","key":"common_max","value":70,"enabled":true,"notes":"コモン価格の上限"},{"group":"shop_card_price","key":"uncommon_min","value":80,"enabled":true,"notes":"アンコモン価格の下限"},{"group":"shop_card_price","key":"uncommon_max","value":110,"enabled":true,"notes":"アンコモン価格の上限"},{"group":"shop_card_price","key":"rare_min","value":120,"enabled":true,"notes":"レア価格の下限"},{"group":"shop_card_price","key":"rare_max","value":150,"enabled":true,"notes":"レア価格の上限"},{"group":"shop_reroll","key":"price","value":50,"enabled":true,"notes":"ラインナップ一括引き直し料金"},{"group":"shop_reroll","key":"max_count","value":1,"enabled":true,"notes":"リロール回数上限"},{"group":"shop_equipment_pull","key":"pull_1_price","value":75,"enabled":true,"notes":"装備抽選1回目の料金"},{"group":"shop_equipment_pull","key":"pull_2_price","value":110,"enabled":true,"notes":"装備抽選2回目の料金"},{"group":"shop_equipment_pull","key":"pull_3_price","value":150,"enabled":true,"notes":"装備抽選3回目の料金"},{"group":"shop_equipment_pull","key":"pull_4_price","value":200,"enabled":true,"notes":"装備抽選4回目の料金"},{"group":"shop_equipment_pull","key":"max_pulls","value":4,"enabled":true,"notes":"装備抽選の回数上限"},{"group":"shop_removal","key":"price","value":75,"enabled":true,"notes":"カード除去の料金"},{"group":"shop_removal","key":"max_count","value":1,"enabled":true,"notes":"1ショップあたりのカード除去回数上限"},{"group":"shop_spell_equipment_lineup","key":"slot_count","value":3,"enabled":true,"notes":"ショップに並ぶスペル装備数"}];
 
 const EVENTS = [{"eventId":"copy_card","minFloor":1,"maxFloor":3,"weight":1,"maxOccurrencesPerRun":1,"eventValue":1,"enabled":true,"notes":"カード個体を複製"},{"eventId":"upgrade_spell_permanent","minFloor":1,"maxFloor":3,"weight":1,"maxOccurrencesPerRun":1,"eventValue":1,"enabled":true,"notes":"スペルを恒久的に1段階強化"},{"eventId":"remove_card","minFloor":1,"maxFloor":3,"weight":1,"maxOccurrencesPerRun":1,"eventValue":1,"enabled":true,"notes":"カードを削除"}];
 
@@ -5500,6 +5500,7 @@ window.EVENTS        = EVENTS;</script>
     playerMaxHearts:      { group: 'player_life', key: 'max_hearts' },
     restHealHearts:       { group: 'player_life', key: 'rest_heal_hearts' },
     playerReviveHearts:   { group: 'player_life', key: 'revive_hearts' },
+    bossClearHealHearts:  { group: 'player_life', key: 'boss_clear_heal_hearts' },
   });
 
   function findRow(group, key) {
@@ -5574,6 +5575,14 @@ window.EVENTS        = EVENTS;</script>
     return getPositiveInt(PARAM_KEYS.playerReviveHearts, 'player revive hearts');
   }
 
+  // 各層のボスを倒した時に回復するハート数。
+  // 最大ハートまで回復させたい場合は最大ハート以上の値を入れる（heal 側で上限クランプする）。
+  // 難易度モードで回復量を下げられるよう、全回復固定にせずCSVの数値で表す。
+  function getBossClearHealHearts() {
+    const spec = PARAM_KEYS.bossClearHealHearts;
+    return Math.max(0, getInt(spec.group, spec.key));
+  }
+
   // クラス（スターターデッキ）ごとのスペル進化魔力コスト補正。
   // spell.csv の upgrade_spell_boost_cost（カード個別値）に加算する。
   function getSpellUpgradeCostDelta(mainClassId) {
@@ -5595,6 +5604,7 @@ window.EVENTS        = EVENTS;</script>
     getPlayerMaxHearts,
     getRestHealHearts,
     getPlayerReviveHearts,
+    getBossClearHealHearts,
     getSpellUpgradeCostDelta,
   });
 })();
@@ -23470,19 +23480,35 @@ function resolvePostRewardTransition({ isBossNode, currentFloor }) {
   return { type: 'map', nextScene: 'map' };
 }
 
+// ボス撃破由来の遷移かどうか。resolvePostRewardTransition が返す type が正本。
+const BOSS_CLEAR_TRANSITION_TYPES = new Set(['to_floor_2', 'to_floor_3', 'clear']);
+
+// 各層のボスを倒した時のハート回復。回復量は game_params.csv が正本。
+// 報酬選択が終わった後に適用したいので、階層遷移と同じ場所で行う。
+// （handleRewardPick / handleRelicTargetSelect / handleRelicTargetCancel の
+//   いずれも最後にここを通るため、書き漏れが起きない）
+function applyBossClearHeal(prev, transition) {
+  if (!transition || !BOSS_CLEAR_TRANSITION_TYPES.has(transition.type)) return prev;
+  const amount = window.GameParams.getBossClearHealHearts();
+  if (amount <= 0) return prev;
+  const hearts = window.PlayerLife.heal(prev.hearts, prev.maxHearts, amount);
+  return hearts === prev.hearts ? prev : { ...prev, hearts };
+}
+
 function applyFloorTransition(prev, transition) {
   if (!transition) return prev;
+  const healed = applyBossClearHeal(prev, transition);
   if (transition.type === 'to_floor_2') {
     if (!window.buildMapForFloor) throw new Error('buildMapForFloor is not loaded');
-    const floor2Map = window.buildMapForFloor(2, prev.mapMode || DEFAULT_MAP_MODE);
-    return { ...prev, floor: 2, map: floor2Map, currentNodeId: null, visitedNodeIds: [] };
+    const floor2Map = window.buildMapForFloor(2, healed.mapMode || DEFAULT_MAP_MODE);
+    return { ...healed, floor: 2, map: floor2Map, currentNodeId: null, visitedNodeIds: [] };
   }
   if (transition.type === 'to_floor_3') {
     if (!window.buildMapForFloor) throw new Error('buildMapForFloor is not loaded');
-    const floor3Map = window.buildMapForFloor(3, prev.mapMode || DEFAULT_MAP_MODE);
-    return { ...prev, floor: 3, map: floor3Map, currentNodeId: null, visitedNodeIds: [] };
+    const floor3Map = window.buildMapForFloor(3, healed.mapMode || DEFAULT_MAP_MODE);
+    return { ...healed, floor: 3, map: floor3Map, currentNodeId: null, visitedNodeIds: [] };
   }
-  return prev;
+  return healed;
 }
 
 function buildEvolutionUnlockInfo(result, nextScene = 'reward') {
