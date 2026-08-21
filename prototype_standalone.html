@@ -5491,6 +5491,7 @@ window.EVENTS        = EVENTS;</script>
     restHealHearts:       { group: 'player_life', key: 'rest_heal_hearts' },
     playerReviveHearts:   { group: 'player_life', key: 'revive_hearts' },
     bossClearHealHearts:  { group: 'player_life', key: 'boss_clear_heal_hearts' },
+    battleWinGold:        { group: 'battle',      key: 'battle_win_gold' },
   });
 
   function findRow(group, key) {
@@ -5573,6 +5574,12 @@ window.EVENTS        = EVENTS;</script>
     return Math.max(0, getInt(spec.group, spec.key));
   }
 
+  // 戦闘勝利の基本報酬ゴールド。実際の獲得額は gold_gain_rate で補正される。
+  function getBattleWinGold() {
+    const spec = PARAM_KEYS.battleWinGold;
+    return Math.max(0, getInt(spec.group, spec.key));
+  }
+
   // クラス（スターターデッキ）ごとのスペル進化魔力コスト補正。
   // spell.csv の upgrade_spell_boost_cost（カード個別値）に加算する。
   function getSpellUpgradeCostDelta(mainClassId) {
@@ -5595,6 +5602,7 @@ window.EVENTS        = EVENTS;</script>
     getRestHealHearts,
     getPlayerReviveHearts,
     getBossClearHealHearts,
+    getBattleWinGold,
     getSpellUpgradeCostDelta,
   });
 })();
@@ -12281,6 +12289,8 @@ if (typeof window !== 'undefined') {
     const commands = [];
     const resolutionTrace = [];
     const commandSequence = { value: 0 };
+    // 撃破時に発生したゴールド（gold_on_death）。撃破イベント経由でのみ増える。
+    let goldGain = 0;
     for (let depth = 0; ; depth++) {
       const deaths = { player: [], enemy: [] };
       const settlementOptions = {
@@ -12320,6 +12330,7 @@ if (typeof window !== 'undefined') {
             commands.push(...(own.commands || []));
             resolutionTrace.push(...(own.resolutionTrace || []));
             domainEvents.push(...(own.domainEvents || []));
+            goldGain += num(own.goldGain);
           }
           const allies = window.BattleEvents.dispatchFromDomainEvent('on_ally_death', death.domainEvent, {
             ...deathContext,
@@ -12333,10 +12344,11 @@ if (typeof window !== 'undefined') {
           commands.push(...(allies.commands || []));
           resolutionTrace.push(...(allies.resolutionTrace || []));
           domainEvents.push(...(allies.domainEvents || []));
+          goldGain += num(allies.goldGain);
         });
       });
     }
-    return { playerBoard, enemyBoard, commands, resolutionTrace, domainEvents };
+    return { playerBoard, enemyBoard, commands, resolutionTrace, domainEvents, goldGain };
   }
 
   function swapBoardPositions(boardIn, sourceKey, destKey) {
@@ -12611,6 +12623,7 @@ if (typeof window !== 'undefined') {
     state.domainEvents.push(...(next.domainEvents || []));
     state.energyPlus += num(next.energyPlus);
     state.energyGain += num(next.energyGain);
+    state.goldGain += num(next.goldGain);
     state.evolveEnergyPlus += num(next.evolveEnergyPlus);
     state.firstDrawPlus += num(next.firstDrawPlus);
     state.extraActions += num(next.extraActions);
@@ -12641,6 +12654,8 @@ if (typeof window !== 'undefined') {
       domainEvents: [...(initial.domainEvents || [])],
       energyPlus: num(initial.energyPlus),
       energyGain: num(initial.energyGain),
+      // 戦闘中に獲得したゴールド。戦闘終了時にランの所持金へ精算する（gold_gain_rate は精算側で適用）。
+      goldGain: num(initial.goldGain),
       evolveEnergyPlus: num(initial.evolveEnergyPlus),
       firstDrawPlus: num(initial.firstDrawPlus),
       extraActions: num(initial.extraActions),
@@ -13814,6 +13829,52 @@ if (typeof window !== 'undefined') {
     };
   }
 
+  // 戦闘ログ用の文言。system_texts.csv（text_type=battle_log）が正本で、
+  // 文言をプログラム側に持たない。未定義なら何も出さない（推測値で代用しない）。
+  function getBattleLogText(textId, vars = {}) {
+    const display = window.Texts?.getGameTextDisplay?.('battle_log', textId, vars);
+    return display?.text || null;
+  }
+
+  // 撃破されたときにプレイヤーへゴールドを与える（黄金のハチなど）。
+  // 撃破イベント経由でしか発火しないため、逃走・戦闘終了で盤面から消えた場合は加算されない。
+  // gold_gain_rate による補正は戦闘終了時の精算側で一括適用する。
+  function resolveGoldOnDeath(ctx) {
+    const amount = Math.max(0, Math.floor(num(ctx.effect.value)));
+    return {
+      playerBoard: ctx.playerBoard,
+      enemyBoard: ctx.enemyBoard,
+      applied: amount > 0,
+      targetKeys: [],
+      commands: [],
+      goldGain: amount,
+    };
+  }
+
+  // 盤面から離脱する。撃破ではないので撃破イベントを発火させない。
+  // したがって on_death 効果（gold_on_death など）も、味方の撃破反応（骸骨王など）も動かない。
+  function resolveEscape(ctx) {
+    const boardKey = ctx.sourceSide === 'player' ? 'playerBoard' : 'enemyBoard';
+    const board = ctx[boardKey] || {};
+    const inst = ctx.sourceKey ? board[ctx.sourceKey] : null;
+    if (!inst) {
+      return { playerBoard: ctx.playerBoard, enemyBoard: ctx.enemyBoard, applied: false, targetKeys: [], commands: [] };
+    }
+    // 盤面の空きスロットは null で表す（撃破除去と同じ表現に揃える）。
+    const nextBoard = { ...board, [ctx.sourceKey]: null };
+    const message = getBattleLogText('unit_escaped', {
+      name: window.Texts?.getCardName?.(inst) || inst.name || inst.cardId || '',
+    });
+    if (message && Array.isArray(ctx.log)) ctx.log.push(message);
+    return {
+      playerBoard: boardKey === 'playerBoard' ? nextBoard : ctx.playerBoard,
+      enemyBoard: boardKey === 'enemyBoard' ? nextBoard : ctx.enemyBoard,
+      applied: true,
+      targetKeys: [],
+      commands: [],
+    };
+  }
+
   function resolveEnrageOnAttack(ctx) {
     return resolveEffect({
       ...ctx.effect,
@@ -14511,6 +14572,11 @@ if (typeof window !== 'undefined') {
     // 忘却の契約（エンチャント）＝「コスト-1」の代償として付与先スペル使用時に廃棄する。
     // 廃棄は付随効果なので、山札が0枚でも付与先スペル自体は成立させる。
     exile_deck_top: { execute: resolveCardZoneMoveRequest, sourceZone: 'player_deck', destinationZone: 'player_exile', allowEmptyResult: true },
+    // 撃破時ゴールド。effect_value が獲得額（黄金のハチ＝75）。
+    gold_on_death: { execute: resolveGoldOnDeath, allowEmptyResult: true },
+    // 離脱。盤面から消えるだけで撃破扱いにしない。
+    // 既定の行動ログ（「◯◯ が △△ を実行」）は専用文言と重複するので抑止する。
+    escape: { execute: resolveEscape, allowEmptyResult: true, suppressDefaultActionLog: true },
     repeat_spell: { execute: resolveCombatRule, spellLifecycle: { rule: 'repeat' } },
     use_disposition_override: { execute: resolveCombatRule, acquisition: 'attach', spellLifecycle: { rule: 'use_disposition' } },
     cost_payment_override: { execute: resolveCombatRule, spellLifecycle: { rule: 'cost_payment' } },
@@ -15968,10 +16034,13 @@ if (typeof module !== 'undefined' && module.exports) {
     const domainEvents = [];
     let combatCommandSequence = 0;
     let actionBlocked = false;
+    // 撃破時に発生したゴールド（gold_on_death）。攻撃解決の結果として呼び出し側へ返す。
+    let goldGain = 0;
     const collectExecutionArtifacts = result => {
       commands.push(...(result?.commands || []));
       resolutionTrace.push(...(result?.resolutionTrace || []));
       domainEvents.push(...(result?.domainEvents || []));
+      goldGain += Number(result?.goldGain) || 0;
     };
     const conditionContext = {
       battleTurn: opts.battleTurn,
@@ -16053,8 +16122,12 @@ if (typeof module !== 'undefined' && module.exports) {
         const targetUid = targetBefore && (targetBefore.uid || targetBefore.instanceId);
         if (targetUid) resolvedStepTargetUids.add(targetUid);
       });
-      if (result.applied) log.push(`✦ ${source.name} が ${action.actionName || effect.id} を実行`);
       const definition = getEffectDefinition(effect.id);
+      // 専用の戦闘ログを持つ効果（escape など）は、既定の行動ログを出すと二重になるため抑止する。
+      // どの効果を抑止するかは Effect Registry の宣言が正本で、ここに effect_id の分岐を書かない。
+      if (result.applied && definition?.suppressDefaultActionLog !== true) {
+        log.push(`✦ ${source.name} が ${action.actionName || effect.id} を実行`);
+      }
       const reachesPlayerBase = sourceSide === 'enemy'
         && targetSide === 'player'
         && definition?.hostileToPlayerBase === true
@@ -16712,6 +16785,7 @@ if (typeof module !== 'undefined' && module.exports) {
       commands,
       resolutionTrace,
       domainEvents,
+      goldGain,
     };
   }
 
@@ -16752,10 +16826,13 @@ if (typeof module !== 'undefined' && module.exports) {
     const commands = [];
     const resolutionTrace = [];
     const domainEvents = [];
+    // 戦闘中に獲得したゴールド（gold_on_death）。ターン結果として呼び出し側へ返す。
+    let goldGain = 0;
     const collectExecutionArtifacts = result => {
       commands.push(...(result?.commands || []));
       resolutionTrace.push(...(result?.resolutionTrace || []));
       domainEvents.push(...(result?.domainEvents || []));
+      goldGain += Number(result?.goldGain) || 0;
     };
     const settleCombatBoards = () => {
       const settled = settleBoardsWithDeathEvents(pb, eb, log, conditionContext);
@@ -16986,6 +17063,7 @@ if (typeof module !== 'undefined' && module.exports) {
             commands,
             resolutionTrace,
             domainEvents,
+            goldGain,
           };
         }
       }
@@ -17193,6 +17271,7 @@ if (typeof module !== 'undefined' && module.exports) {
       commands,
       resolutionTrace,
       domainEvents,
+      goldGain,
     };
   }
 
@@ -19185,7 +19264,7 @@ function RewardScene({ runState, isBoss, rewardContext = 'normal_battle', goldGa
 
   // サマリー行は実際に出すステップから組み立てる（CSVで報酬を止めたら表記も消える）。
   const summaryText = [
-    getRewardUiText('summary_gold', { gold: goldGain || 100 }),
+    getRewardUiText('summary_gold', { gold: Math.max(0, Number(goldGain) || 0) }),
     ...steps.map(key => getRewardUiText(`summary_${key}`, { count: 1 })),
   ].join(` ${getRewardUiText('summary_separator')} `);
 
@@ -21532,6 +21611,9 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
       battleModifiers: [],
       battleFeatureUsage: {},
       removedFromDeckUids: [],
+      // この戦闘で獲得したゴールド（gold_on_death の合計）。
+      // 戦闘終了時に onBattleEnd で運び出し、ラン側で gold_gain_rate を適用して精算する。
+      goldGained: 0,
       turn: 1,
       battleRandomState: { seed, plan: cloneBattleRandomPlan(null, seed) },
       phase: 'deploy',
@@ -21564,6 +21646,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
     battleModifiers,
     battleFeatureUsage,
     removedFromDeckUids,
+    goldGained,
     turn,
     battleRandomState,
     phase,
@@ -23197,6 +23280,8 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
       ...removedFromDeckUids,
       ...routedRemoved.removedFromDeckUids,
     ])];
+    // 撃破時ゴールドはターン解決結果（locked）だけを積む。プレビューでは積まない。
+    const nextGoldGained = goldGained + (Number(result.goldGain) || 0);
 
     // 繰り上げ演出のキー保存＆クリア
     if (result.promotedPlayerKeys.length || result.promotedEnemyKeys.length) {
@@ -23218,6 +23303,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
         battleModifiers: result.battleModifiers || [],
         graveyard: nextGraveyard,
         removedFromDeckUids: nextRemovedFromDeckUids,
+        goldGained: nextGoldGained,
         deck: routedRemoved.eternalCards.length > 0
           ? shuffle([...deck, ...routedRemoved.eternalCards])
           : deck,
@@ -23271,6 +23357,7 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
       battleModifiers: result.battleModifiers || [],
       graveyard: nextGraveyard,
       removedFromDeckUids: nextRemovedFromDeckUids,
+      goldGained: nextGoldGained,
       hand: turnStartZones.hand,
       deck: turnStartZones.deck,
       discard: turnStartZones.discard,
@@ -24047,14 +24134,14 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
         onCancel={() => setSpellUpgradeFlow({ phase: 'selecting', sourceUid: null })}
       />
       {phase === 'victory' && (
-        <div className="overlay overlay--win" onClick={() => onBattleEnd && onBattleEnd({ outcome:'win', hearts: playerHearts, maxHearts: PLAYER_RUN_MAX_HEARTS, removedFromDeckUids })}>
+        <div className="overlay overlay--win" onClick={() => onBattleEnd && onBattleEnd({ outcome:'win', hearts: playerHearts, maxHearts: PLAYER_RUN_MAX_HEARTS, removedFromDeckUids, goldGained })}>
           <div className="overlay__kanji">WIN</div>
           <div className="overlay__title">勝 利</div>
           <div className="overlay__sub">── クリックで タイトルへ ──</div>
         </div>
       )}
       {phase === 'defeat' && (
-        <div className="overlay overlay--lose" onClick={() => onBattleEnd && onBattleEnd({ outcome:'lose', hearts: 0, maxHearts: PLAYER_RUN_MAX_HEARTS, removedFromDeckUids })}>
+        <div className="overlay overlay--lose" onClick={() => onBattleEnd && onBattleEnd({ outcome:'lose', hearts: 0, maxHearts: PLAYER_RUN_MAX_HEARTS, removedFromDeckUids, goldGained })}>
           <div className="overlay__kanji">LOSE</div>
           <div className="overlay__title">敗 北</div>
           <div className="overlay__sub">── クリックで タイトルへ ──</div>
@@ -24102,7 +24189,6 @@ window.BattleScene = BattleScene;
 // ============================================================
 // プレイヤー残機ハートは game_params.csv を正本とする。
 // ============================================================
-const BATTLE_WIN_GOLD = 100;  // 戦闘勝利の基本報酬。実際の獲得額は gold_gain_rate で補正される
 const DEFAULT_MAP_MODE = 'random';
 const CLASS_IDS = Object.freeze(['royal', 'magician']);
 const DEFAULT_CLASS_SELECTION = Object.freeze({ mainClassId: 'royal', subClassId: 'magician' });
@@ -24364,6 +24450,9 @@ const AppMain = () => {
   const [debugEquipment, setDebugEquipment] = React.useState(null);
   // 取得時に対象選択が必要なレリックの保留情報（選択確定まで報酬反映を待つ）
   const [pendingRelicAcquisition, setPendingRelicAcquisition] = React.useState(null);
+  // 直近の戦闘で実際に獲得したゴールド（基本報酬＋戦闘中獲得、gold_gain_rate 適用後）。
+  // 報酬画面の表示にそのまま使うため、遷移前にここで確定させる。
+  const [lastBattleGold, setLastBattleGold] = React.useState(0);
 
   // ----- ラン操作 -----
 
@@ -24592,7 +24681,7 @@ const AppMain = () => {
 
   // ----- バトル終了 -----
 
-  const handleBattleEnd = ({ outcome, hearts, removedFromDeckUids }) => {
+  const handleBattleEnd = ({ outcome, hearts, removedFromDeckUids, goldGained }) => {
     const nextHearts = (typeof hearts === 'number')
       ? window.PlayerLife.clamp(hearts, runState.maxHearts)
       : runState.hearts;
@@ -24604,10 +24693,14 @@ const AppMain = () => {
     };
 
     if (outcome === 'win') {
+      // 基本報酬と戦闘中に得たゴールド（gold_on_death）をまとめて gold_gain_rate で補正する。
+      // 補正はここ一箇所だけで行い、効果ハンドラー側は素の獲得額のみを返す。
+      const baseGold = window.GameParams.getBattleWinGold() + Math.max(0, Number(goldGained) || 0);
       setRunState(prev => {
         const relicEffects = window.RelicService.getOwnedRelicEffects(prev);
-        const gold = (prev.gold || 0) + window.Effects.applyGoldGainRate(BATTLE_WIN_GOLD, relicEffects);
-        return removeExiledCards({ ...prev, hearts: nextHearts, gold });
+        const earnedGold = window.Effects.applyGoldGainRate(baseGold, relicEffects);
+        setLastBattleGold(earnedGold);
+        return removeExiledCards({ ...prev, hearts: nextHearts, gold: (prev.gold || 0) + earnedGold });
       });
       setBattleWaveId(null);
       const currentNode = runState.map ? runState.map.nodes[runState.currentNodeId] : null;
@@ -24756,7 +24849,7 @@ const AppMain = () => {
       runState={runState}
       isBoss={!!currentNode && currentNode.type === 'boss'}
       rewardContext={rewardContext}
-      goldGain={100}
+      goldGain={lastBattleGold}
       onPick={handleRewardPick}
     />;
   }
