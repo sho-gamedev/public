@@ -11180,6 +11180,40 @@ if (typeof module !== 'undefined' && module.exports) {
     hit_resolved: 'on_hit',
   });
 
+  const TRIGGER_EXECUTION_FIELDS = Object.freeze([
+    'transaction', 'externalEffects', 'relicEffects',
+    'random', 'rng', 'randomPlan', 'randomSeed', 'randomTargetMode',
+    'randomDecisionScope', 'randomPlanReadOnly',
+    'battleId', 'battleDefinitionId', 'battleTurn', 'turn',
+    'maxPlayerHearts', 'previewOnly', 'log', 'logEachTarget', 'triggerChain',
+    'sourceRefs', 'includePlayerBoard', 'includeEnemyBoard',
+    'source', 'sourceSide', 'sourceKey', 'defaultTargetSide',
+    'effectResults', 'sacrificeResult', 'sacrificeEventCount', 'battleRevivalCount',
+    'deadUnit', 'deadSide', 'deadPosKey', 'killedTargets',
+    'lastHitKey', 'lastHitKeys', 'lastHitSide',
+    'previousTargetKeys', 'previousTargetUids', 'hitTargetKeys',
+    'damageDealt', 'spellDamageDealt', 'actualHealedAmount',
+    'eventStatusId', 'statusBefore', 'statusAfter', 'attackKind', 'attackIndex',
+  ]);
+
+  // Triggerへ渡せる実行情報を許可リストで選び、発火元Actionの選択情報を境界で遮断する。
+  function createTriggerResolutionContext(context = {}, event = null) {
+    const triggerContext = {};
+    TRIGGER_EXECUTION_FIELDS.forEach(field => {
+      if (context[field] !== undefined) triggerContext[field] = context[field];
+    });
+    if (!event) return triggerContext;
+    return {
+      ...triggerContext,
+      domainEvent: event,
+      eventTargetSide: event.target?.side || null,
+      eventTargetKey: event.target?.posKey || null,
+      chainId: event.chainId,
+      causationId: event.eventId,
+      eventDepth: Math.max(0, Number(event.depth) || 0) + 1,
+    };
+  }
+
   function eventActor(context = {}) {
     const source = context.source || null;
     return Object.freeze({
@@ -11191,10 +11225,10 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   function eventTarget(context = {}) {
-    const target = context.eventTarget || context.target || null;
+    const target = context.eventTarget || null;
     return Object.freeze({
-      side: context.eventTargetSide || context.targetSide || null,
-      posKey: context.eventTargetKey || context.targetKey || null,
+      side: context.eventTargetSide || null,
+      posKey: context.eventTargetKey || null,
       uid: target?.uid || target?.instanceId || null,
       cardId: target?.cardId || target?.id || null,
     });
@@ -11255,13 +11289,10 @@ if (typeof module !== 'undefined' && module.exports) {
     if (transaction?.kind === 'battle_resolution_transaction') {
       transaction.recordDomainEvent(event);
     }
-    const result = window.EffectLifecycle.dispatchEffectTrigger(triggerTiming, {
-      ...context,
-      domainEvent: event,
-      chainId: event.chainId,
-      causationId: event.eventId,
-      eventDepth: event.depth + 1,
-    });
+    const result = window.EffectLifecycle.dispatchEffectTrigger(
+      triggerTiming,
+      createTriggerResolutionContext(context, event),
+    );
     if (transaction?.kind === 'battle_resolution_transaction') {
       transaction.markDomainEventNotified(event.eventId);
       return { ...result, domainEvents: [], transactionApplied: true };
@@ -11278,13 +11309,10 @@ if (typeof module !== 'undefined' && module.exports) {
     if (!window.EffectLifecycle?.dispatchEffectTrigger) {
       throw new Error('BattleEventsにはEffectLifecycle.dispatchEffectTriggerが必要です');
     }
-    const result = window.EffectLifecycle.dispatchEffectTrigger(triggerTiming, {
-      ...context,
-      domainEvent: event,
-      chainId: event.chainId,
-      causationId: event.eventId,
-      eventDepth: Math.max(0, Number(event.depth) || 0) + 1,
-    });
+    const result = window.EffectLifecycle.dispatchEffectTrigger(
+      triggerTiming,
+      createTriggerResolutionContext(context, event),
+    );
     return context.transaction?.kind === 'battle_resolution_transaction'
       ? { ...result, domainEvents: [], transactionApplied: true }
       : result;
@@ -11323,6 +11351,7 @@ if (typeof module !== 'undefined' && module.exports) {
     TRIGGER_EVENT_TYPES,
     COMBAT_REACTION_TRIGGERS,
     createDomainEvent,
+    createTriggerResolutionContext,
     dispatchTrigger,
     dispatchFromDomainEvent,
     collectCombatReactionCommands,
@@ -11895,8 +11924,6 @@ if (typeof module !== 'undefined' && module.exports) {
       deck: current.deck,
       hand: current.hand,
       discard: current.discard,
-      targetKeys: null,
-      selectedKey: null,
       sourceRefs: targetListeners
         ? [{ sourceKey: target.key, sourceSide: target.side }]
         : undefined,
@@ -14557,8 +14584,18 @@ if (typeof module !== 'undefined' && module.exports) {
     'self', 'self_unit', 'opposing_board', 'opposing_unit', 'unit',
   ]);
 
+  // Root Actionで確定済みの明示対象だけを、汎用Contextと区別した入力契約から取得する。
+  function getExplicitEffectTargetKeys(board, ctx) {
+    const input = ctx.effectTargetInput;
+    if (input?.kind !== 'explicit_selection' || !Array.isArray(input.targetRefs)) return null;
+    return input.targetRefs
+      .filter(ref => ref?.side === ctx.targetSide && ref.posKey && board[ref.posKey])
+      .map(ref => ref.posKey);
+  }
+
   function selectEffectTargetKeys(board, effect, ctx) {
-    if (Array.isArray(ctx.targetKeys)) return ctx.targetKeys.filter(key => board[key]);
+    const explicitKeys = getExplicitEffectTargetKeys(board, ctx);
+    if (explicitKeys) return explicitKeys;
     const area = effect.targetGridArea || null;
     const selector = effect.targetSelector || null;
     const areaResolver = area ? TARGET_AREA_RESOLVERS[area] : TARGET_AREA_RESOLVERS.all;
@@ -14594,7 +14631,7 @@ if (typeof module !== 'undefined' && module.exports) {
           ? context.lastHitSide
           : selector === 'event_target'
             ? (context.eventTargetSide || context.domainEvent?.target?.side)
-            : (Array.isArray(context.targetKeys) ? context.targetSide : null);
+            : null;
     if ((selectorSide === 'player' || selectorSide === 'enemy') && sides.includes(selectorSide)) {
       sides = [selectorSide];
     }
@@ -16479,7 +16516,7 @@ if (typeof module !== 'undefined' && module.exports) {
     const resolvedTargets = boardDomain && (
       effect.targetGridArea
       || effect.targetSelector
-      || Array.isArray(effectContext.targetKeys)
+      || effectContext.effectTargetInput?.kind === 'explicit_selection'
     )
       ? resolveEffectTargetRefs(effect, effectContext)
       : [];
@@ -17071,27 +17108,6 @@ if (typeof module !== 'undefined' && module.exports) {
     }
   }
 
-  // 生贄操作の選択情報を破棄し、生贄Eventから始まるEffectが自身の対象定義を解決できるContextを作る。
-  function createSacrificeTriggerContext(transaction, targetSide, sacrificeResult, context = {}) {
-    return {
-      ...context,
-      targetKeys: undefined,
-      targetKey: null,
-      selectedKey: null,
-      selectedSide: null,
-      transaction,
-      source: context.source || null,
-      sourceSide: context.sourceSide || 'player',
-      sourceKey: context.sourceKey || null,
-      includePlayerBoard: targetSide === 'player',
-      includeEnemyBoard: targetSide === 'enemy',
-      sacrificeResult,
-      sacrificeEventCount: transaction.state.sacrificeEventCount,
-      battleRevivalCount: transaction.state.battleRevivalCount,
-      log: context.log || [],
-    };
-  }
-
   // 一度の生贄操作を、致死化、死亡解決、集約Event通知まで決定順で解決する。
   function resolveSacrifice(transaction, request = {}, context = {}) {
     assertParentTransaction(transaction);
@@ -17126,7 +17142,18 @@ if (typeof module !== 'undefined' && module.exports) {
     transaction.drainImmediateWork();
     window.BattleEvents.dispatchTrigger(
       'on_sacrificed',
-      createSacrificeTriggerContext(transaction, targetSide, sacrificeResult, context),
+      {
+        transaction,
+        source: context.source || null,
+        sourceSide: context.sourceSide || 'player',
+        sourceKey: context.sourceKey || null,
+        includePlayerBoard: targetSide === 'player',
+        includeEnemyBoard: targetSide === 'enemy',
+        sacrificeResult,
+        sacrificeEventCount: transaction.state.sacrificeEventCount,
+        battleRevivalCount: transaction.state.battleRevivalCount,
+        log: context.log || [],
+      },
     );
     transaction.drainImmediateWork();
     transaction.requireBoundary('death');
@@ -18128,6 +18155,21 @@ if (typeof module !== 'undefined' && module.exports) {
     return transaction;
   }
 
+  // Root Action内の即時WorkとBoundaryを交互に解決し、入れ子のTrigger連鎖を安定状態まで収束させる。
+  function settleImmediateResolution(transaction, scopedContext = {}, handlers = {}) {
+    assertOpenTransaction(transaction);
+    let cycles = 0;
+    while (transaction.pendingWork.length > 0 || transaction.requiredBoundaries.size > 0) {
+      cycles += 1;
+      if (cycles > transaction.limits.maxBoundaryPasses) {
+        throw new Error(`Battle Resolution即時解決の最大反復回数を超えました: ${transaction.limits.maxBoundaryPasses}`);
+      }
+      if (transaction.pendingWork.length > 0) drainImmediateWork(transaction, handlers);
+      if (transaction.requiredBoundaries.size > 0) settleRequiredBoundaries(transaction, scopedContext);
+    }
+    return transaction;
+  }
+
   // 使用開始時に手札から取り出した同一カード個体を、どのZoneにも属さない一時Contextへ保持する。
   function setActiveCard(transaction, card) {
     assertOpenTransaction(transaction);
@@ -18197,6 +18239,7 @@ if (typeof module !== 'undefined' && module.exports) {
     const handler = ROOT_ACTION_HANDLERS.get(transaction.rootActionType);
     if (!handler) throw new Error(`Root Action Handlerが未登録です: ${transaction.rootActionType}`);
     handler(transaction, transaction.intent);
+    settleImmediateResolution(transaction, transaction.rootContext);
     return transaction;
   }
 
@@ -18295,6 +18338,7 @@ if (typeof module !== 'undefined' && module.exports) {
     transaction.requireBoundary = boundary => requireBoundary(transaction, boundary);
     transaction.settleBoundary = (boundary, context) => settleBoundary(transaction, boundary, context);
     transaction.settleRequiredBoundaries = context => settleRequiredBoundaries(transaction, context);
+    transaction.settleImmediateResolution = (context, handlers) => settleImmediateResolution(transaction, context, handlers);
     transaction.recordDomainEvent = (event, config) => recordDomainEvent(transaction, event, config);
     transaction.markDomainEventNotified = eventId => markDomainEventNotified(transaction, eventId);
     transaction.registerDomainEventHandler = (eventId, handler) => registerDomainEventHandler(transaction, eventId, handler);
@@ -18764,7 +18808,7 @@ if (typeof module !== 'undefined' && module.exports) {
       externalEffects: transaction.rootContext.externalEffects || transaction.rootContext.relicEffects || [],
       canInteract: intent.canInteract !== false,
       unityValue: intent.unityValue ?? transaction.state.playerSummonCountTotal,
-      targetKeys: Array.isArray(intent.targetKeys) ? [...intent.targetKeys] : [],
+      sacrificeTargetUids: Array.isArray(intent.sacrificeTargetUids) ? [...intent.sacrificeTargetUids] : [],
       log: [],
     });
     const playerBoardBeforeAction = transaction.state.playerBoard;
@@ -18881,6 +18925,7 @@ if (typeof module !== 'undefined' && module.exports) {
     transaction.assertTransactionApplied(result, 'Attack Lifecycle');
     transaction.settlePlayerDeathZones(playerBoardBeforeAction, context);
     transaction.drainImmediateWork();
+    transaction.settleImmediateResolution(context);
     transaction.outcome = {
       applied: true,
       randomPlan: result.randomPlan || intent.randomPlan || null,
@@ -19691,7 +19736,10 @@ if (typeof module !== 'undefined' && module.exports) {
         ...transaction.state,
         ...context,
         transaction,
-        targetKeys: state.targetKeys,
+        effectTargetInput: {
+          kind: 'explicit_selection',
+          targetRefs: state.targetKeys.map(posKey => ({ side: 'player', posKey })),
+        },
         sourceSide: 'player',
         battleTurn: context.battleTurn,
         log: context.log || [],
@@ -19716,8 +19764,11 @@ if (typeof module !== 'undefined' && module.exports) {
       if (!global.SacrificeLifecycle?.resolveSacrifice) {
         throw new Error('necromancer_sacrificeにはSacrifice Lifecycleが必要です');
       }
-      const targetKeys = [...new Set(context.targetKeys || [])]
-        .filter(posKey => state.candidates.includes(posKey));
+      const targetUids = new Set(context.sacrificeTargetUids || []);
+      const targetKeys = state.candidates.filter(posKey => {
+        const unit = transaction.state.playerBoard?.[posKey];
+        return targetUids.has(unit?.uid || unit?.instanceId);
+      });
       if (targetKeys.length !== 1) return { applied: false, reason: 'invalid_sacrifice_target' };
       return global.SacrificeLifecycle.resolveSacrifice(transaction, {
         targetSide: 'player',
@@ -26525,13 +26576,16 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
   // 選択済み対象をクラススキルIntentへ渡し、効果と使用回数を同じTransactionで確定する。
   const activateClassSkill = (targetKeys = []) => {
     if (!classSkillId) return;
+    const sacrificeTargetUids = targetKeys
+      .map(posKey => currentBattleSnapshot.playerBoard?.[posKey]?.uid || currentBattleSnapshot.playerBoard?.[posKey]?.instanceId)
+      .filter(Boolean);
     const transaction = createBattleResolutionTransaction(currentBattleSnapshot, {
       rootActionType: 'battle_feature',
       intent: {
         featureId: classSkillId,
         canInteract: phase === 'player' && !combatAnimating && spellUpgradeFlow.phase === 'idle',
         unityValue: playerSummonCountTotal,
-        targetKeys,
+        sacrificeTargetUids,
       },
       rootContext: {
         battleTurn: turn,
