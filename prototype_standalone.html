@@ -11243,8 +11243,8 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   function dispatchTrigger(triggerTiming, context = {}) {
-    if (!window.Effects?.dispatchEffectTrigger) {
-      throw new Error('BattleEventsにはEffects.dispatchEffectTriggerが必要です');
+    if (!window.EffectLifecycle?.dispatchEffectTrigger) {
+      throw new Error('BattleEventsにはEffectLifecycle.dispatchEffectTriggerが必要です');
     }
     const transaction = context.transaction;
     const eventContext = transaction?.kind === 'battle_resolution_transaction'
@@ -11255,7 +11255,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (transaction?.kind === 'battle_resolution_transaction') {
       transaction.recordDomainEvent(event);
     }
-    const result = window.Effects.dispatchEffectTrigger(triggerTiming, {
+    const result = window.EffectLifecycle.dispatchEffectTrigger(triggerTiming, {
       ...context,
       domainEvent: event,
       chainId: event.chainId,
@@ -11275,10 +11275,10 @@ if (typeof module !== 'undefined' && module.exports) {
     if (!event?.type || !event.eventId) {
       throw new Error('既存DomainEventからのTrigger解決には確定済みEventが必要です');
     }
-    if (!window.Effects?.dispatchEffectTrigger) {
-      throw new Error('BattleEventsにはEffects.dispatchEffectTriggerが必要です');
+    if (!window.EffectLifecycle?.dispatchEffectTrigger) {
+      throw new Error('BattleEventsにはEffectLifecycle.dispatchEffectTriggerが必要です');
     }
-    const result = window.Effects.dispatchEffectTrigger(triggerTiming, {
+    const result = window.EffectLifecycle.dispatchEffectTrigger(triggerTiming, {
       ...context,
       domainEvent: event,
       chainId: event.chainId,
@@ -12029,6 +12029,225 @@ if (typeof module !== 'undefined' && module.exports) {
     };
   }
 
+  // Effect Registryが生成した一件分の要求を、親Transaction上でCommand・Event・Triggerまで解決する。
+  function resolveEffect(effect, context = {}) {
+    if (!window.Effects?.prepareEffectResolution) {
+      throw new Error('Effect LifecycleにはEffects.prepareEffectResolutionが必要です');
+    }
+    const prepared = window.Effects.prepareEffectResolution(effect, context);
+    if (!prepared?.preparedEffectResolution) return prepared;
+    return resolveEffectLifecycle(
+      prepared.result,
+      prepared.executionContext,
+      prepared.effectDefinition,
+    );
+  }
+
+  // 選択境界までのon_use Effect列を順に解決し、previous参照と残りEffectを同じContextへ保存する。
+  function resolveSpellEffects(spell, target, context = {}, effectOverride = null) {
+    const transaction = getParentTransaction(context);
+    if (!transaction) throw new Error('Spell Effect列の解決には親Battle Resolution Transactionが必要です');
+    const sourceEffects = Array.isArray(effectOverride)
+      ? effectOverride.map(entry => ({ ...entry })).filter(entry => entry?.id)
+      : window.Effects.getEffectEntries(spell, ['on_use']);
+    const effects = window.Effects.expandRepeatedSpellEffects(sourceEffects);
+    if (effects.length === 0) throw new Error(`spell has no on_use effects: ${spell?.id || spell?.name || '?'}`);
+
+    const incoming = context.spellContext || {};
+    const selectedSide = incoming.selectedSide || target?.side || 'player';
+    const selectedKey = incoming.selectedPosKey ?? target?.posKey ?? null;
+    let previousSide = incoming.previousSide || selectedSide;
+    let previousKey = incoming.previousPosKey ?? selectedKey;
+    let lastHitKeys = incoming.lastHitKeys || (incoming.lastHitKey ? [incoming.lastHitKey] : []);
+    let killedTargets = [];
+
+    for (let index = 0; index < effects.length; index++) {
+      const original = effects[index];
+      const inferredSide = original.targetSelector === 'previous' ? previousSide : selectedSide;
+      const effect = {
+        ...original,
+        targetDomain: !original.targetDomain && original.targetSelector === 'previous'
+          ? `${previousSide}_board`
+          : original.targetDomain,
+      };
+      const result = resolveEffect(effect, {
+        ...transaction.state,
+        ...context,
+        transaction,
+        source: spell,
+        sourceSide: 'player',
+        defaultTargetSide: inferredSide,
+        selectedKey: effect.targetSelector === 'previous' ? previousKey : selectedKey,
+        previousKey,
+        lastHitKeys,
+        killedTargets,
+        isSpell: true,
+      });
+      if (!result) return null;
+      if (Array.isArray(result.lastHitKeys) && result.lastHitKeys.length > 0) lastHitKeys = result.lastHitKeys;
+      if (Array.isArray(result.killedTargets) && result.killedTargets.length > 0) {
+        killedTargets = [...killedTargets, ...result.killedTargets];
+      }
+      if (Array.isArray(result.targetKeys) && result.targetKeys.length > 0) {
+        previousKey = result.targetKeys[result.targetKeys.length - 1];
+        previousSide = result.targetRefs?.at(-1)?.side || inferredSide;
+      }
+
+      const requestKeyByType = {
+        EvolutionSelectionRequest: 'evolutionRequest',
+        ReviveSelectionRequest: 'reviveRequest',
+        CardZoneMoveSelectionRequest: 'cardZoneMoveRequest',
+        BoardSelectionSequenceRequest: 'boardSelectionRequest',
+      };
+      const requestKey = requestKeyByType[result.request?.type];
+      if (requestKey) {
+        return {
+          ...transaction.state,
+          spellLastHitKey: lastHitKeys.at(-1) || null,
+          [requestKey]: {
+            ...result.request,
+            effectIndex: original.index ?? index + 1,
+            remainingEffects: effects.slice(index + 1).map(entry => ({ ...entry })),
+            spellContext: {
+              selectedSide,
+              selectedPosKey: selectedKey,
+              previousSide,
+              previousPosKey: previousKey,
+              lastHitKey: lastHitKeys.at(-1) || null,
+              lastHitKeys,
+            },
+          },
+        };
+      }
+      if (!result.applied && result.targetKeys?.length === 0 && !window.Effects.getEffectDefinition(effect.id)?.allowEmptyResult) {
+        return null;
+      }
+    }
+
+    return { ...transaction.state, spellLastHitKey: lastHitKeys.at(-1) || null };
+  }
+
+  // 選択完了後の残りEffect列を、先行Effectが保存したprevious Contextから再開する。
+  function continueSpellEffects(spell, remainingEffects, target, context = {}) {
+    const effects = Array.isArray(remainingEffects)
+      ? remainingEffects.map(entry => ({ ...entry })).filter(entry => entry?.id)
+      : [];
+    if (effects.length === 0) {
+      const transaction = getParentTransaction(context);
+      return { ...(transaction?.state || context), spellLastHitKey: context.spellContext?.lastHitKey || null };
+    }
+    return resolveSpellEffects(spell, target, context, effects);
+  }
+
+  // Trigger列の集約情報を、親Transactionの正本Stateとは分離して呼び出し元向け結果へ蓄積する。
+  function mergeTriggerResult(state, next) {
+    state.energyPlus += num(next.energyPlus);
+    state.energyGain += num(next.energyGain);
+    state.goldGain += num(next.goldGain);
+    state.firstDrawPlus += num(next.firstDrawPlus);
+    state.extraActions += num(next.extraActions);
+    state.healedBaseAmount += num(next.healedBaseAmount);
+    state.counterCommands.push(...(next.counterCommands || []));
+    state.skipNormalAttack = state.skipNormalAttack || next.skipNormalAttack === true;
+    state.resetSpellBoost = state.resetSpellBoost || next.resetSpellBoost === true;
+    state.targetKeys.push(...(next.targetKeys || []));
+    state.killedTargets.push(...(next.killedTargets || []));
+    if (Array.isArray(next.lastHitKeys) && next.lastHitKeys.length > 0) state.lastHitKeys = [...next.lastHitKeys];
+  }
+
+  // 確定事実のTrigger対象を固定順で列挙し、各Effectと必要Boundaryを同じ親Transaction内で解決する。
+  function dispatchEffectTrigger(timing, context = {}) {
+    if (!timing) throw new Error('dispatchEffectTriggerにはtimingが必要です');
+    const transaction = getParentTransaction(context);
+    if (!transaction) throw new Error('Effect Triggerには親Battle Resolution Transactionが必要です');
+    const sourceRefs = Array.isArray(context.sourceRefs) ? [...context.sourceRefs] : [];
+    const positionKeys = window.Board?.POS_KEYS || [];
+    if (!Array.isArray(context.sourceRefs) && context.includePlayerBoard !== false) {
+      positionKeys.forEach(sourceKey => sourceRefs.push({ sourceKey, sourceSide: 'player' }));
+    }
+    if (!Array.isArray(context.sourceRefs) && context.includeEnemyBoard === true) {
+      positionKeys.forEach(sourceKey => sourceRefs.push({ sourceKey, sourceSide: 'enemy' }));
+    }
+    (context.externalEffects || []).forEach(raw => {
+      const effect = window.Effects.normalizeEffectEntry(raw);
+      if (!effect || effect.timing !== timing) return;
+      const sourceId = raw.relicId || raw.sourceId || raw.id || effect.id;
+      sourceRefs.push({
+        external: true,
+        source: { id: sourceId, name: raw.sourceLabel || raw.name || sourceId },
+        sourceKey: null,
+        sourceSide: raw.sourceSide || 'player',
+        effects: [effect],
+      });
+    });
+
+    const aggregate = {
+      energyPlus: 0,
+      energyGain: 0,
+      goldGain: 0,
+      firstDrawPlus: 0,
+      extraActions: 0,
+      healedBaseAmount: 0,
+      counterCommands: [],
+      skipNormalAttack: false,
+      resetSpellBoost: false,
+      targetKeys: [],
+      killedTargets: [],
+      lastHitKeys: Array.isArray(context.lastHitKeys)
+        ? [...context.lastHitKeys]
+        : (context.lastHitKey ? [context.lastHitKey] : []),
+    };
+
+    sourceRefs.forEach(spec => {
+      const getCurrentSource = () => spec.external
+        ? spec.source
+        : transaction.state[spec.sourceSide === 'enemy' ? 'enemyBoard' : 'playerBoard']?.[spec.sourceKey];
+      const initialSource = getCurrentSource();
+      if (!initialSource || window.Effects.getStatus(initialSource, 'seal') > 0) return;
+      const effects = spec.external
+        ? spec.effects
+        : window.Effects.getEffectEntries(initialSource, [timing], { includeInactiveConditionalEffects: true });
+      effects.forEach(effect => {
+        const source = getCurrentSource();
+        if (!source || window.Effects.getStatus(source, 'seal') > 0) return;
+        const next = resolveEffect(effect, {
+          ...transaction.state,
+          ...context,
+          transaction,
+          triggerTiming: timing,
+          source,
+          sourceKey: spec.sourceKey,
+          sourceSide: spec.sourceSide,
+          defaultTargetSide: context.defaultTargetSide || (spec.sourceSide === 'enemy' ? 'player' : 'enemy'),
+          lastHitKey: aggregate.lastHitKeys.at(-1) || null,
+          lastHitKeys: aggregate.lastHitKeys,
+          log: context.log || [],
+        });
+        mergeTriggerResult(aggregate, next || {});
+        transaction.drainImmediateWork();
+      });
+    });
+
+    if (context.cleanupBoards === true) transaction.requireBoundary('death');
+    return { ...aggregate, ...transaction.state, transactionApplied: true };
+  }
+
+  // スペル使用確定後のon_spell_castを、通常Triggerと同じEvent通知経路で解決する。
+  function resolveOnSpellCast(playerBoard, enemyBoard, log, context = {}) {
+    return window.BattleEvents.dispatchTrigger('on_spell_cast', {
+      ...context,
+      playerBoard,
+      enemyBoard,
+      externalEffects: context.relicEffects || [],
+      includePlayerBoard: true,
+      includeEnemyBoard: false,
+      cleanupBoards: true,
+      lastHitKey: context.spellLastHitKey || null,
+      lastHitSide: context.spellLastHitSide || 'enemy',
+      log,
+    });
+  }
+
   // 呼び出し元が生成したUnit State Commandを、通常Effectと同じEvent通知経路で解決する。
   function resolveUnitStateEffectCommands(commands, context = {}) {
     const transaction = getParentTransaction(context);
@@ -12065,7 +12284,12 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   window.EffectLifecycle = {
+    resolveEffect,
     resolveEffectLifecycle,
+    resolveSpellEffects,
+    continueSpellEffects,
+    dispatchEffectTrigger,
+    resolveOnSpellCast,
     resolveUnitStateEffectCommands,
   };
 })();
@@ -13425,13 +13649,6 @@ if (typeof module !== 'undefined' && module.exports) {
     return commands;
   }
 
-  function applyReactionStateCommands(commands, context = {}) {
-    if (!window.EffectLifecycle?.resolveUnitStateEffectCommands) {
-      throw new Error('リアクションEffect解決にはEffectLifecycleが必要です');
-    }
-    return window.EffectLifecycle.resolveUnitStateEffectCommands(commands, context);
-  }
-
   function getNextAttackMultiplier(inst) {
     const runtimeEffects = getRuntimeModifiers(inst);
     const runtimeValues = [
@@ -13636,7 +13853,7 @@ if (typeof module !== 'undefined' && module.exports) {
       getEffectEntries(source, ['passive'], { conditionContext: sourceConditionContext })
         .filter(entry => entry.sourceType !== 'runtime_modifier' && !!getEffectDefinition(entry.id)?.passive)
         .forEach(entry => {
-          const result = resolveEffect(entry, {
+          const result = resolveNestedEffectRequest(entry, {
             ...sourceConditionContext,
             queryOnly: true,
             board,
@@ -13979,7 +14196,7 @@ if (typeof module !== 'undefined' && module.exports) {
   function resolveAtkBuffPerSpellBoost(ctx) {
     const amount = Math.max(0, num(ctx.spellBoostCount) * num(ctx.effect.value, 1));
     if (amount <= 0) return { playerBoard: ctx.playerBoard, enemyBoard: ctx.enemyBoard, applied: false, targetKeys: [], commands: [] };
-    return resolveEffect({ ...ctx.effect, id: 'atk_buff', value: amount }, {
+    return resolveNestedEffectRequest({ ...ctx.effect, id: 'atk_buff', value: amount }, {
       ...ctx,
       isSpell: false,
     });
@@ -14112,398 +14329,6 @@ if (typeof module !== 'undefined' && module.exports) {
     return null;
   }
 
-  // スペル発動：spell 定義と選択ターゲット情報から、新しい board/HP 状態を返す
-  //   target: { side:'player'|'enemy', posKey:string|null }
-  //   ctx:    { playerBoard, enemyBoard, playerHearts, enemyHP, maxPlayerHearts, maxEnemyHP, log }
-  function applySpellResolved(spell, target, ctx, effectOverride = null) {
-    const sourceEffects = Array.isArray(effectOverride)
-      ? effectOverride.map(entry => ({ ...entry })).filter(entry => entry?.id)
-      : getEffectEntries(spell, ['on_use']);
-    const effects = expandRepeatedSpellEffects(sourceEffects);
-    if (effects.length === 0) throw new Error(`spell has no on_use effects: ${spell?.id || spell?.name || '?'}`);
-    const log = ctx.log || [];
-    const incoming = ctx.spellContext || {};
-    const selectedSide = incoming.selectedSide || target.side || 'player';
-    const selectedKey = incoming.selectedPosKey ?? target.posKey ?? null;
-    let previousSide = incoming.previousSide || selectedSide;
-    let previousKey = incoming.previousPosKey ?? selectedKey;
-    let lastHitKeys = incoming.lastHitKeys || (incoming.lastHitKey ? [incoming.lastHitKey] : []);
-    let killedTargets = [];
-    let playerBoard = { ...ctx.playerBoard };
-    let enemyBoard = { ...ctx.enemyBoard };
-    let playerHearts = ctx.playerHearts;
-    let enemyHP = ctx.enemyHP;
-    const commands = [];
-    const resolutionTrace = [];
-    const domainEvents = [];
-    const resolutionSteps = [];
-    let energyPlus = 0;
-    let energyGain = 0;
-    let resetSpellBoost = false;
-    let battleModifiers = getBattleModifiers(ctx.battleModifiers, { includePending: true });
-    let scheduledRevives = [...(ctx.scheduledRevives || [])];
-    let battleRevivalCount = Math.max(0, Math.floor(num(ctx.battleRevivalCount)));
-    let sacrificeEventCount = Math.max(0, Math.floor(num(ctx.sacrificeEventCount)));
-    let requiredBoundaries = [];
-
-    for (let index = 0; index < effects.length; index++) {
-      const original = effects[index];
-      const inferredSide = original.targetSelector === 'previous' ? previousSide : selectedSide;
-      const normalizedDomain = !original.targetDomain && original.targetSelector === 'previous'
-        ? `${previousSide}_board`
-        : original.targetDomain;
-      const effect = { ...original, targetDomain: normalizedDomain || original.targetDomain };
-      const result = resolveEffect(effect, {
-        transaction: ctx.transaction,
-        battleTurn: ctx.battleTurn,
-        playerBoard,
-        enemyBoard,
-        playerHearts,
-        enemyHP,
-        maxPlayerHearts: ctx.maxPlayerHearts,
-        maxEnemyHP: ctx.maxEnemyHP,
-        sourceSide: 'player',
-        defaultTargetSide: inferredSide,
-        selectedKey: effect.targetSelector === 'previous' ? previousKey : selectedKey,
-        previousKey,
-        lastHitKeys,
-        killedTargets,
-        spellBoostCount: ctx.spellBoostCount || 0,
-        spellEnhanceBonus: ctx.spellEnhanceBonus || 0,
-        hand: ctx.hand,
-        deck: ctx.deck,
-        discard: ctx.discard,
-        // カード領域の変更はCommandとして蓄積する。後続効果の成立判定では、
-        // まだ実行していないDrawCommandの合計だけを読み取る。
-        pendingDrawCount: commands.reduce((total, command) => (
-          command?.type === 'DrawCommand' ? total + Math.max(0, num(command.value ?? command.count)) : total
-        ), 0),
-        battleModifiers,
-        scheduledRevives,
-        battleRevivalCount,
-        sacrificeEventCount,
-        identityRuntime: ctx.identityRuntime,
-        lifecycleBoundaryOwner: ctx.lifecycleBoundaryOwner === true,
-        battleDefinitionId: ctx.battleDefinitionId,
-        causationId: ctx.causationId,
-        chainId: ctx.chainId,
-        eventDepth: ctx.eventDepth,
-        isSpell: true,
-        source: spell,
-        log,
-      });
-      playerBoard = result.playerBoard ?? playerBoard;
-      enemyBoard = result.enemyBoard ?? enemyBoard;
-      playerHearts = result.playerHearts ?? playerHearts;
-      enemyHP = result.enemyHP ?? enemyHP;
-      commands.push(...(result.commands || []));
-      resolutionTrace.push(...(result.resolutionTrace || []));
-      domainEvents.push(...(result.domainEvents || []));
-      resolutionSteps.push(...(result.resolutionSteps || []));
-      energyPlus += num(result.energyPlus);
-      energyGain += num(result.energyGain);
-      resetSpellBoost = resetSpellBoost || result.resetSpellBoost === true;
-      if (Array.isArray(result.battleModifiers)) battleModifiers = result.battleModifiers;
-      if (Array.isArray(result.scheduledRevives)) scheduledRevives = result.scheduledRevives;
-      battleRevivalCount = Math.max(battleRevivalCount, num(result.battleRevivalCount));
-      sacrificeEventCount = Math.max(sacrificeEventCount, num(result.sacrificeEventCount));
-      requiredBoundaries = [...new Set([
-        ...requiredBoundaries,
-        ...(result.requiredBoundaries || []),
-      ])];
-      if (Array.isArray(result.lastHitKeys) && result.lastHitKeys.length > 0) lastHitKeys = result.lastHitKeys;
-      if (Array.isArray(result.killedTargets) && result.killedTargets.length > 0) killedTargets.push(...result.killedTargets);
-      if (Array.isArray(result.targetKeys) && result.targetKeys.length > 0) {
-        previousKey = result.targetKeys[result.targetKeys.length - 1];
-        const previousTargetRef = Array.isArray(result.targetRefs) ? result.targetRefs.at(-1) : null;
-        previousSide = previousTargetRef?.side
-          || getBoardFromEffectDomain(effect.targetDomain, {
-            sourceSide: 'player',
-            selectedSide,
-            previousSide,
-            defaultTargetSide: inferredSide,
-          });
-      }
-      if (result.request?.type === 'EvolutionSelectionRequest') {
-        return {
-          playerBoard, enemyBoard, playerHearts, enemyHP, commands, resolutionTrace, domainEvents, resolutionSteps, energyPlus, energyGain,
-          resetSpellBoost, battleModifiers, spellLastHitKey: lastHitKeys.at(-1) || null,
-          evolutionRequest: {
-            ...result.request,
-            effectIndex: original.index ?? index + 1,
-            targetSide: result.request.targetSide,
-            posKey: result.request.posKey,
-            count: result.request.count,
-            remainingEffects: effects.slice(index + 1).map(entry => ({ ...entry })),
-            spellContext: {
-              selectedSide,
-              selectedPosKey: selectedKey,
-              previousSide,
-              previousPosKey: previousKey,
-              lastHitSide: lastHitKeys.length > 0 ? 'enemy' : null,
-              lastHitKey: lastHitKeys.at(-1) || null,
-              lastHitKeys,
-            },
-          },
-        };
-      }
-      if (result.request?.type === 'ReviveSelectionRequest') {
-        return {
-          playerBoard, enemyBoard, playerHearts, enemyHP, commands, resolutionTrace, domainEvents, resolutionSteps, energyPlus, energyGain,
-          resetSpellBoost, battleModifiers, spellLastHitKey: lastHitKeys.at(-1) || null,
-          reviveRequest: {
-            ...result.request,
-            effectIndex: original.index ?? index + 1,
-            remainingEffects: effects.slice(index + 1).map(entry => ({ ...entry })),
-            spellContext: {
-              selectedSide,
-              selectedPosKey: selectedKey,
-              previousSide,
-              previousPosKey: previousKey,
-              lastHitKey: lastHitKeys.at(-1) || null,
-              lastHitKeys,
-            },
-          },
-        };
-      }
-      if (result.request?.type === 'CardZoneMoveSelectionRequest') {
-        return {
-          playerBoard, enemyBoard, playerHearts, enemyHP, commands, resolutionTrace, domainEvents, resolutionSteps, energyPlus, energyGain,
-          resetSpellBoost, battleModifiers, spellLastHitKey: lastHitKeys.at(-1) || null,
-          cardZoneMoveRequest: {
-            ...result.request,
-            effectIndex: original.index ?? index + 1,
-            remainingEffects: effects.slice(index + 1).map(entry => ({ ...entry })),
-            spellContext: {
-              selectedSide,
-              selectedPosKey: selectedKey,
-              previousSide,
-              previousPosKey: previousKey,
-              lastHitSide: lastHitKeys.length > 0 ? 'enemy' : null,
-              lastHitKey: lastHitKeys.at(-1) || null,
-              lastHitKeys,
-            },
-          },
-        };
-      }
-      if (result.request?.type === 'BoardSelectionSequenceRequest') {
-        return {
-          playerBoard, enemyBoard, playerHearts, enemyHP, commands, resolutionTrace, domainEvents, resolutionSteps, energyPlus, energyGain,
-          resetSpellBoost, battleModifiers, scheduledRevives, battleRevivalCount, sacrificeEventCount,
-          spellLastHitKey: lastHitKeys.at(-1) || null,
-          boardSelectionRequest: {
-            ...result.request,
-            effectIndex: original.index ?? index + 1,
-            remainingEffects: effects.slice(index + 1).map(entry => ({ ...entry })),
-            spellContext: {
-              selectedSide,
-              selectedPosKey: selectedKey,
-              previousSide,
-              previousPosKey: previousKey,
-              lastHitKey: lastHitKeys.at(-1) || null,
-              lastHitKeys,
-            },
-          },
-        };
-      }
-      if (!result.applied && result.targetKeys && result.targetKeys.length === 0 && !getEffectDefinition(effect.id)?.allowEmptyResult) {
-        return null;
-      }
-    }
-
-    return {
-      playerBoard,
-      enemyBoard,
-      playerHearts,
-      enemyHP,
-      commands,
-      resolutionTrace,
-      domainEvents,
-      resolutionSteps,
-      energyPlus,
-      spellLastHitKey: lastHitKeys.at(-1) || null,
-      energyGain,
-      resetSpellBoost,
-      battleModifiers,
-      scheduledRevives,
-      battleRevivalCount,
-      sacrificeEventCount,
-      requiredBoundaries,
-    };
-  }
-
-  function continueSpellEffects(spell, remainingEffects, target, ctx) {
-    const effects = Array.isArray(remainingEffects)
-      ? remainingEffects.map(entry => ({ ...entry })).filter(entry => entry && entry.id)
-      : [];
-    if (effects.length === 0) {
-      return {
-        playerBoard: ctx.playerBoard,
-        enemyBoard: ctx.enemyBoard,
-        playerHearts: ctx.playerHearts,
-        enemyHP: ctx.enemyHP,
-        commands: [],
-        resolutionTrace: [],
-        energyPlus: 0,
-        spellLastHitKey: ctx.spellContext?.lastHitKey || null,
-        energyGain: 0,
-        resetSpellBoost: false,
-        battleModifiers: getBattleModifiers(ctx.battleModifiers, { includePending: true }),
-        evolutionRequest: null,
-      };
-    }
-    return applySpellResolved({ ...spell, effects }, target, ctx, effects);
-  }
-
-
-  function mergeTriggerResult(state, next) {
-    state.playerBoard = next.playerBoard ?? state.playerBoard;
-    state.enemyBoard = next.enemyBoard ?? state.enemyBoard;
-    if (Array.isArray(next.deck)) state.deck = next.deck;
-    if (Array.isArray(next.hand)) state.hand = next.hand;
-    if (Array.isArray(next.discard)) state.discard = next.discard;
-    if (Number.isFinite(Number(next.playerHearts))) state.playerHearts = Number(next.playerHearts);
-    if (Number.isFinite(Number(next.enemyHP))) state.enemyHP = Number(next.enemyHP);
-    state.commands.push(...(next.commands || []));
-    state.resolutionTrace.push(...(next.resolutionTrace || []));
-    state.domainEvents.push(...(next.domainEvents || []));
-    state.resolutionSteps.push(...(next.resolutionSteps || []));
-    state.energyPlus += num(next.energyPlus);
-    state.energyGain += num(next.energyGain);
-    state.goldGain += num(next.goldGain);
-    state.firstDrawPlus += num(next.firstDrawPlus);
-    state.extraActions += num(next.extraActions);
-    state.healedBaseAmount += num(next.healedBaseAmount);
-    state.counterCommands.push(...(next.counterCommands || []));
-    state.skipNormalAttack = state.skipNormalAttack || next.skipNormalAttack === true;
-    state.resetSpellBoost = state.resetSpellBoost || next.resetSpellBoost === true;
-    state.scheduledRevives = next.scheduledRevives ?? state.scheduledRevives;
-    state.battleRevivalCount = Math.max(state.battleRevivalCount, num(next.battleRevivalCount));
-    state.sacrificeEventCount = Math.max(state.sacrificeEventCount, num(next.sacrificeEventCount));
-    if (Array.isArray(next.targetKeys)) state.targetKeys.push(...next.targetKeys);
-    if (Array.isArray(next.killedTargets)) state.killedTargets.push(...next.killedTargets);
-    if (Array.isArray(next.lastHitKeys) && next.lastHitKeys.length > 0) state.lastHitKeys = next.lastHitKeys;
-    return state;
-  }
-
-  function createTriggerState(ctx = {}, initial = {}) {
-    return {
-      playerBoard: initial.playerBoard ?? ctx.playerBoard ?? {},
-      enemyBoard: initial.enemyBoard ?? ctx.enemyBoard ?? {},
-      deck: Array.isArray(initial.deck) ? initial.deck : (Array.isArray(ctx.deck) ? ctx.deck : null),
-      hand: Array.isArray(initial.hand) ? initial.hand : (Array.isArray(ctx.hand) ? ctx.hand : null),
-      discard: Array.isArray(initial.discard) ? initial.discard : (Array.isArray(ctx.discard) ? ctx.discard : null),
-      playerHearts: initial.playerHearts ?? ctx.playerHearts,
-      enemyHP: initial.enemyHP ?? ctx.enemyHP,
-      commands: [...(initial.commands || [])],
-      resolutionTrace: [...(initial.resolutionTrace || [])],
-      domainEvents: [...(initial.domainEvents || [])],
-      resolutionSteps: [...(initial.resolutionSteps || [])],
-      energyPlus: num(initial.energyPlus),
-      energyGain: num(initial.energyGain),
-      // 戦闘中に獲得したゴールド。戦闘終了時にランの所持金へ精算する（gold_gain_rate は精算側で適用）。
-      goldGain: num(initial.goldGain),
-      firstDrawPlus: num(initial.firstDrawPlus),
-      extraActions: num(initial.extraActions),
-      healedBaseAmount: num(initial.healedBaseAmount),
-      counterCommands: [...(initial.counterCommands || [])],
-      skipNormalAttack: initial.skipNormalAttack === true,
-      resetSpellBoost: initial.resetSpellBoost === true,
-      scheduledRevives: [...(initial.scheduledRevives || ctx.scheduledRevives || [])],
-      battleRevivalCount: Math.max(0, num(initial.battleRevivalCount ?? ctx.battleRevivalCount)),
-      sacrificeEventCount: Math.max(0, num(initial.sacrificeEventCount ?? ctx.sacrificeEventCount)),
-      targetKeys: [...(initial.targetKeys || [])],
-      killedTargets: [...(initial.killedTargets || [])],
-      lastHitKeys: Array.isArray(initial.lastHitKeys)
-        ? [...initial.lastHitKeys]
-        : (Array.isArray(ctx.lastHitKeys) ? [...ctx.lastHitKeys] : (ctx.lastHitKey ? [ctx.lastHitKey] : [])),
-    };
-  }
-
-  function dispatchEffectTrigger(timing, ctx = {}) {
-    if (!timing) throw new Error('dispatchEffectTriggerにはtimingが必要です');
-    const parentTransaction = ctx.transaction?.kind === 'battle_resolution_transaction'
-      ? ctx.transaction
-      : null;
-    const state = createTriggerState(parentTransaction ? { ...ctx, ...parentTransaction.state } : ctx);
-    const sourceRefs = Array.isArray(ctx.sourceRefs) ? [...ctx.sourceRefs] : [];
-    if (!Array.isArray(ctx.sourceRefs) && ctx.includePlayerBoard !== false) {
-      POS_KEYS.forEach(sourceKey => {
-        sourceRefs.push({ sourceKey, sourceSide: 'player' });
-      });
-    }
-    if (!Array.isArray(ctx.sourceRefs) && ctx.includeEnemyBoard === true) {
-      POS_KEYS.forEach(sourceKey => {
-        sourceRefs.push({ sourceKey, sourceSide: 'enemy' });
-      });
-    }
-    (ctx.externalEffects || []).forEach(raw => {
-      const effect = normalizeEffectEntry(raw);
-      if (!effect || effect.timing !== timing) return;
-      const sourceId = raw.relicId || raw.sourceId || raw.id || effect.id;
-      sourceRefs.push({
-        external: true,
-        source: { id: sourceId, name: raw.sourceLabel || raw.name || sourceId },
-        sourceKey: null,
-        sourceSide: raw.sourceSide || 'player',
-        effects: [effect],
-      });
-    });
-
-    sourceRefs.forEach(spec => {
-      const getCurrentSource = () => spec.external
-        ? spec.source
-        : (spec.sourceSide === 'enemy'
-          ? (parentTransaction?.state.enemyBoard || state.enemyBoard)
-          : (parentTransaction?.state.playerBoard || state.playerBoard))[spec.sourceKey];
-      const initialSource = getCurrentSource();
-      if (!initialSource || getStatus(initialSource, 'seal') > 0) return;
-      const effects = spec.external
-        ? spec.effects
-        : getEffectEntries(initialSource, [timing], { includeInactiveConditionalEffects: true });
-      effects.forEach(effect => {
-        const source = getCurrentSource();
-        if (!source || getStatus(source, 'seal') > 0) return;
-        const next = resolveEffect(effect, {
-          ...ctx,
-          triggerTiming: timing,
-          playerBoard: parentTransaction?.state.playerBoard || state.playerBoard,
-          enemyBoard: parentTransaction?.state.enemyBoard || state.enemyBoard,
-          deck: parentTransaction?.state.deck ?? state.deck,
-          hand: parentTransaction?.state.hand ?? state.hand,
-          source,
-          sourceKey: spec.sourceKey,
-          sourceSide: spec.sourceSide,
-          defaultTargetSide: ctx.defaultTargetSide || (spec.sourceSide === 'enemy' ? 'player' : 'enemy'),
-          lastHitKey: state.lastHitKeys[state.lastHitKeys.length - 1] || null,
-          lastHitKeys: state.lastHitKeys,
-          log: ctx.log || [],
-        });
-        mergeTriggerResult(state, next);
-        if (parentTransaction) {
-          parentTransaction.drainImmediateWork();
-          state.playerBoard = parentTransaction.state.playerBoard;
-          state.enemyBoard = parentTransaction.state.enemyBoard;
-          state.deck = parentTransaction.state.deck;
-          state.hand = parentTransaction.state.hand;
-          state.discard = parentTransaction.state.discard;
-          state.playerHearts = parentTransaction.state.playerHearts;
-        }
-      });
-    });
-
-    if (ctx.cleanupBoards === true) {
-      if (!parentTransaction) {
-        throw new Error('cleanupBoardsを伴うTrigger解決には親Battle Resolution Transactionが必要です');
-      }
-      parentTransaction.requireBoundary('death');
-      return { ...state, ...parentTransaction.state, transactionApplied: true };
-    }
-    return parentTransaction
-      ? { ...state, ...parentTransaction.state, transactionApplied: true }
-      : state;
-  }
-
   // ---------- スペルブースト：on_spell_cast トリガー ----------
   function getSpellEnhanceBonus(board) {
     if (!board) return 0;
@@ -14538,20 +14363,6 @@ if (typeof module !== 'undefined' && module.exports) {
     }, 0);
   }
 
-  function applyOnSpellCastEffects(playerBoardIn, enemyBoardIn, log, ctx = {}) {
-    return window.BattleEvents.dispatchTrigger('on_spell_cast', {
-      ...ctx,
-      playerBoard: playerBoardIn,
-      enemyBoard: enemyBoardIn,
-      externalEffects: ctx.relicEffects || [],
-      includePlayerBoard: true,
-      includeEnemyBoard: false,
-      cleanupBoards: true,
-      lastHitKey: ctx.spellLastHitKey || null,
-      lastHitSide: ctx.spellLastHitSide || 'enemy',
-      log,
-    });
-  }
   const resolveDefaultTargetSide = ctx => ctx.defaultTargetSide || (ctx.sourceSide === 'enemy' ? 'player' : 'enemy');
   const TARGET_DOMAIN_RESOLVERS = {
     player_board: () => ['player'],
@@ -15138,7 +14949,7 @@ if (typeof module !== 'undefined' && module.exports) {
       sourceKey,
       { battleTurn: ctx.battleTurn },
     );
-    return resolveEffect({ ...ctx.effect, id: 'damage', value: damage }, {
+    return resolveNestedEffectRequest({ ...ctx.effect, id: 'damage', value: damage }, {
       ...ctx,
       targetKeys: null,
       selectedKey: null,
@@ -15520,7 +15331,7 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   function resolveEnrageOnAttack(ctx) {
-    return resolveEffect({
+    return resolveNestedEffectRequest({
       ...ctx.effect,
       id: 'apply_status',
       statusId: 'enrage',
@@ -15542,7 +15353,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (num(ctx.damageDealt) <= 0) {
       return { playerBoard: ctx.playerBoard, enemyBoard: ctx.enemyBoard, applied: false, targetKeys: [], commands: [] };
     }
-    return resolveEffect({
+    return resolveNestedEffectRequest({
       ...ctx.effect,
       id: 'apply_status',
       statusId: 'enrage',
@@ -15555,7 +15366,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (!ctx.targetKey || !ctx.targetSide) {
       return { playerBoard: ctx.playerBoard, enemyBoard: ctx.enemyBoard, applied: false, targetKeys: [], commands: [] };
     }
-    return resolveEffect({
+    return resolveNestedEffectRequest({
       id: 'apply_status',
       statusId,
       value: ctx.effect.value,
@@ -15901,7 +15712,7 @@ if (typeof module !== 'undefined' && module.exports) {
       effectIds: [effectId],
     })[0];
     if (!entry) return { active: false, value: null };
-    const result = resolveEffect(entry, {
+    const result = resolveNestedEffectRequest(entry, {
       ...conditionContext,
       playerBoard: conditionContext.playerBoard || {},
       enemyBoard: conditionContext.enemyBoard || {},
@@ -16591,8 +16402,8 @@ if (typeof module !== 'undefined' && module.exports) {
     };
   }
 
-  // EffectContext を入口にして、スペル・敵行動・攻撃時効果が同じ実行辞書を通る。
-  function resolveEffect(effect, ctx = {}) {
+  // Effect定義を検証して固有Handlerを実行し、Lifecycleが確定処理に使う要求を返す。
+  function prepareEffectResolution(effect, ctx = {}) {
     if (!effect || !effect.id) {
       return buildSkippedEffectResult(ctx);
     }
@@ -16665,9 +16476,6 @@ if (typeof module !== 'undefined' && module.exports) {
     }
     const execute = getEffectExecutor(effect, effectDefinition);
     if (!execute) throw new Error(`effect実行関数が未定義です: effect_id=${effect.id}`);
-    if (!window.EffectLifecycle?.resolveEffectLifecycle) {
-      throw new Error('resolveEffectにはEffectLifecycleが必要です');
-    }
     const resolvedTargets = boardDomain && (
       effect.targetGridArea
       || effect.targetSelector
@@ -16676,11 +16484,18 @@ if (typeof module !== 'undefined' && module.exports) {
       ? resolveEffectTargetRefs(effect, effectContext)
       : [];
     const executionContext = { ...effectContext, effectDefinition, resolvedTargets };
-    return window.EffectLifecycle.resolveEffectLifecycle(
-      normalizeEffectExecutionResult(execute(executionContext)),
+    return {
+      preparedEffectResolution: true,
+      result: normalizeEffectExecutionResult(execute(executionContext)),
       executionContext,
       effectDefinition,
-    );
+    };
+  }
+
+  // 複合effect Handlerが別effectの固有計算を再利用し、Lifecycleを起動せずCommand要求だけを受け取る。
+  function resolveNestedEffectRequest(effect, context = {}) {
+    const prepared = prepareEffectResolution(effect, context);
+    return prepared?.preparedEffectResolution ? prepared.result : prepared;
   }
 
   // ---------- 公開（window.Effects） ----------
@@ -16691,9 +16506,9 @@ if (typeof module !== 'undefined' && module.exports) {
     // 共通effect実行
     EFFECT_REGISTRY, CONDITION_HANDLERS, STATUS_COMBAT_RULES, STATUS_BEHAVIOR_HANDLERS, REACTION_SOURCE_RULES, TARGET_DOMAIN_RESOLVERS, TARGET_AREA_RESOLVERS, TARGET_SELECTOR_RESOLVERS, DURATION_POLICIES,
     resolveEffectTargetRefs, getPlannedEffectTargets,
-    getEffectDefinition, getEffectContractsForEntries, getEffectContractEntries, getEffectPresentation, createEffectContext, resolveEffect, dispatchEffectTrigger, getCardDescription, getCardKeywordDisplays, getBoardEffectBadges, getBoardStatusBadges, getBoardBadges,
+    getEffectDefinition, getEffectContractsForEntries, getEffectContractEntries, getEffectPresentation, createEffectContext, prepareEffectResolution, normalizeEffectEntry, expandRepeatedSpellEffects, getCardDescription, getCardKeywordDisplays, getBoardEffectBadges, getBoardStatusBadges, getBoardBadges,
     // 判定・参照
-    hasEff, hasTimedEff, getEffValue, getEffectEntries, getEffectDef, getPrimarySpellEffect, getExtraAttacks, getEffectiveGridTarget, getIncomingDamageMultiplier, getFlatDamageReduction, getDamageReductionPct, resolveActionPermission, resolveAttackPermission, resolveBattleActionPhasePermission, resolveCombatReactions, applyReactionStateCommands, getNextAttackMultiplier, consumeNextAttackMultiplier, healUnit, applyDamageToUnit, consumeRevival, getCombatRule, hasCombatRule, resolveAttackDamageModifiers, findProvocateur, getEffectiveAtk, resolveAttackBaseDamage, getPlannedAttackTargets, getGuardLimitedPierceTargets, recalcBoardPassiveScaling,
+    hasEff, hasTimedEff, getEffValue, getEffectEntries, getEffectDef, getPrimarySpellEffect, getExtraAttacks, getEffectiveGridTarget, getIncomingDamageMultiplier, getFlatDamageReduction, getDamageReductionPct, resolveActionPermission, resolveAttackPermission, resolveBattleActionPhasePermission, resolveCombatReactions, getNextAttackMultiplier, consumeNextAttackMultiplier, healUnit, applyDamageToUnit, consumeRevival, getCombatRule, hasCombatRule, resolveAttackDamageModifiers, findProvocateur, getEffectiveAtk, resolveAttackBaseDamage, getPlannedAttackTargets, getGuardLimitedPierceTargets, recalcBoardPassiveScaling,
     // 共通Modifier寿命管理
     getRuntimeModifiers, getRuntimeModifierValue, addRuntimeModifier, removeRuntimeModifiers, advanceRuntimeModifiers, advanceRuntimeModifierBoard,
     getBattleModifiers, addBattleModifier, advanceBattleModifiers,
@@ -16702,9 +16517,9 @@ if (typeof module !== 'undefined' && module.exports) {
     applyStatus, getStatus, setStatus, consumeSpellDamagedStatuses, removeHarmfulStatuses, removeStatus,
     applyTurnEndEffects,
     // スペル
-    getSpellTargetRule, applySpell: applySpellResolved, continueSpellEffects, resolveSpellCostPayment, resolveCardCostPayment, resolveSpellUseDisposition,
+    getSpellTargetRule, resolveSpellCostPayment, resolveCardCostPayment, resolveSpellUseDisposition,
     // スペルブースト
-    applyOnSpellCastEffects, getSpellEnhanceBonus, getSpellUpgradeCostReduction,
+    getSpellEnhanceBonus, getSpellUpgradeCostReduction,
     // 外部effect（レリック等）の共通Query Resolver
     getActiveExternalEffects, resolveExternalModifier, getModifierTotal, getModifierOverride,
     getDrawCountPerTurn, getBattleFeatureUsageLimit, getCardRewardOptionCount, getGoldGainRate, applyGoldGainRate,
@@ -17256,6 +17071,27 @@ if (typeof module !== 'undefined' && module.exports) {
     }
   }
 
+  // 生贄操作の選択情報を破棄し、生贄Eventから始まるEffectが自身の対象定義を解決できるContextを作る。
+  function createSacrificeTriggerContext(transaction, targetSide, sacrificeResult, context = {}) {
+    return {
+      ...context,
+      targetKeys: undefined,
+      targetKey: null,
+      selectedKey: null,
+      selectedSide: null,
+      transaction,
+      source: context.source || null,
+      sourceSide: context.sourceSide || 'player',
+      sourceKey: context.sourceKey || null,
+      includePlayerBoard: targetSide === 'player',
+      includeEnemyBoard: targetSide === 'enemy',
+      sacrificeResult,
+      sacrificeEventCount: transaction.state.sacrificeEventCount,
+      battleRevivalCount: transaction.state.battleRevivalCount,
+      log: context.log || [],
+    };
+  }
+
   // 一度の生贄操作を、致死化、死亡解決、集約Event通知まで決定順で解決する。
   function resolveSacrifice(transaction, request = {}, context = {}) {
     assertParentTransaction(transaction);
@@ -17288,18 +17124,10 @@ if (typeof module !== 'undefined' && module.exports) {
       type: 'ModifyBattleCounterCommand', counter: 'sacrifice_event_total', value: 1,
     }, context);
     transaction.drainImmediateWork();
-    window.BattleEvents.dispatchTrigger('on_sacrificed', {
-      ...context,
-      transaction,
-      source: context.source || null,
-      sourceSide: context.sourceSide || 'player',
-      sourceKey: context.sourceKey || null,
-      includePlayerBoard: targetSide === 'player', includeEnemyBoard: targetSide === 'enemy',
-      sacrificeResult,
-      sacrificeEventCount: transaction.state.sacrificeEventCount,
-      battleRevivalCount: transaction.state.battleRevivalCount,
-      log: context.log || [],
-    });
+    window.BattleEvents.dispatchTrigger(
+      'on_sacrificed',
+      createSacrificeTriggerContext(transaction, targetSide, sacrificeResult, context),
+    );
     transaction.drainImmediateWork();
     transaction.requireBoundary('death');
     transaction.requireBoundary('board_stabilization');
@@ -17432,7 +17260,8 @@ if (typeof module !== 'undefined' && module.exports) {
     validateCompositeSelections,
     resolveCompositeSequence,
   };
-})();</script>
+})();
+</script>
 
 <!-- ============ status_lifecycle.js (inline) ============ -->
 <!-- 状態異常の固有挙動・Trigger・死亡・減衰を一つのTransactionとして解決する -->
@@ -18700,7 +18529,7 @@ if (typeof module !== 'undefined' && module.exports) {
     transaction.drainImmediateWork();
   }
 
-  // applySpell/continueSpellEffectsは複数Effectの集約結果であり、Child Lifecycleそのものではない。
+  // EffectLifecycleの複数Effect集約結果は、Child Lifecycle単体の結果として再適用しない。
   // 個々のEffectはEffectLifecycleが親Transactionへ直接適用済みなので、ここではWorkとBoundaryだけを確定する。
   function settleSpellEffectAggregate(transaction, context) {
     transaction.drainImmediateWork();
@@ -18731,8 +18560,8 @@ if (typeof module !== 'undefined' && module.exports) {
         log,
       };
       const result = remainingEffects
-        ? global.Effects.continueSpellEffects(spell, remainingEffects, target, effectContext)
-        : global.Effects.applySpell(spell, target, effectContext);
+        ? global.EffectLifecycle.continueSpellEffects(spell, remainingEffects, target, effectContext)
+        : global.EffectLifecycle.resolveSpellEffects(spell, target, effectContext);
       if (!result) throw new Error(`スペルのEffect解決に失敗しました: ${spell.cardId || spell.id || spell.uid}`);
       settleSpellEffectAggregate(transaction, context);
       lastHitKey = result.spellLastHitKey || lastHitKey;
@@ -18789,7 +18618,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ], context);
     transaction.drainImmediateWork();
 
-    const triggerResult = global.Effects.applyOnSpellCastEffects(
+    const triggerResult = global.EffectLifecycle.resolveOnSpellCast(
       transaction.state.playerBoard,
       transaction.state.enemyBoard,
       log,
@@ -19112,9 +18941,6 @@ if (typeof module !== 'undefined' && module.exports) {
         }, context);
       }
     }
-    if (intent.resetSpellBoost === true) {
-      transaction.executeCommands({ type: 'ResetBattleCounterCommand', counter: 'spell_boost' }, context);
-    }
     transaction.drainImmediateWork();
     transaction.outcome = { applied: true, energyPlus: turnEnergyPlus, log: result.log || [] };
   }
@@ -19146,9 +18972,10 @@ if (typeof module !== 'undefined' && module.exports) {
     }
   }
 
-  // Wave出現IntentをEnemy Wave Runtimeへ渡し、出現後の盤面と資源を同じ親Transactionへ確定する。
+  // Wave定義から配置要求を作り、Deploy Lifecycleと必要Boundaryを同じ親Transactionで完結させる。
   function runWaveSpawn(transaction, intent = {}) {
-    if (!global.EnemyWaveRuntime?.spawnWave) throw new Error('wave_spawnにはEnemy Wave Runtimeが必要です');
+    if (!global.EnemyWaveRuntime?.buildWaveSummonCommands) throw new Error('wave_spawnにはEnemy Wave Runtimeが必要です');
+    if (!global.DeployLifecycle?.resolveDeployCommands) throw new Error('wave_spawnにはDeploy Lifecycleが必要です');
     const battle = intent.battle || transaction.rootContext.battle;
     const waveIndex = Number(intent.waveIndex);
     if (!battle || !Number.isFinite(waveIndex)) {
@@ -19161,17 +18988,33 @@ if (typeof module !== 'undefined' && module.exports) {
       battleTurn: transaction.rootContext.battleTurn ?? transaction.state.turn,
       log: [],
     });
+    const prepared = global.EnemyWaveRuntime.buildWaveSummonCommands(
+      battle,
+      waveIndex,
+      transaction.state.enemyBoard,
+    );
+    if (!prepared.wave) {
+      transaction.outcome = { applied: false, reason: 'wave_not_found', waveIndex };
+      return;
+    }
+    const firstDrawPlusBefore = Number(transaction.state.firstDrawPlus) || 0;
     transaction.executeCommands({ type: 'SetEnemyWaveIndexCommand', waveIndex }, context);
     transaction.drainImmediateWork({ domain_event_notification: handleWaveSpawnDomainEvent });
-    const result = global.EnemyWaveRuntime.spawnWave(transaction, battle, waveIndex, context);
-    transaction.assertTransactionApplied(result, 'Enemy Wave Runtime');
+    const result = global.DeployLifecycle.resolveDeployCommands(transaction, prepared.commands, {
+      ...context,
+      transaction,
+      sourceSide: 'enemy',
+      log: prepared.log,
+      logEachTarget: false,
+    });
+    transaction.assertTransactionApplied(result, 'Wave Deploy Lifecycle');
     transaction.settlePlayerDeathZones(playerBoardBeforeAction, context);
     transaction.outcome = {
       applied: true,
       waveIndex,
-      spawnedKeys: result.spawnedKeys || [],
-      firstDrawBonus: Number(result.firstDrawPlus) || 0,
-      log: result.log || context.log,
+      spawnedKeys: prepared.spawnedKeys,
+      firstDrawBonus: (Number(transaction.state.firstDrawPlus) || 0) - firstDrawPlusBefore,
+      log: prepared.log,
     };
   }
 
@@ -19833,12 +19676,12 @@ if (typeof module !== 'undefined' && module.exports) {
 
   const ACTIVATION_HANDLERS = Object.freeze({
     super_unity(transaction, state, context) {
-      if (!global.Effects || typeof global.Effects.resolveEffect !== 'function') {
-        throw new Error('super_unityにはEffects.resolveEffectが必要です');
+      if (typeof global.EffectLifecycle?.resolveEffect !== 'function') {
+        throw new Error('super_unityにはEffectLifecycle.resolveEffectが必要です');
       }
       const value = Math.max(0, Math.floor(Number(context.unityValue) || 0));
       if (value <= 0) return { applied: false, reason: 'invalid_unity_value' };
-      const result = global.Effects.resolveEffect({
+      const result = global.EffectLifecycle.resolveEffect({
         id: state.definition.effectId,
         value,
         stackRule: 'add',
@@ -20484,9 +20327,9 @@ if (typeof module !== 'undefined' && module.exports) {
     getNextAttackMultiplier, consumeNextAttackMultiplier, advanceRuntimeModifierBoard,
     healUnit, getCombatRule, hasCombatRule, resolveAttackDamageModifiers, findProvocateur,
     resolveAttackBaseDamage, getGuardLimitedPierceTargets, applyTurnEndEffects,
-    getEffectDefinition, getEffectPresentation, resolveEffect, getStatus,
-    applyReactionStateCommands,
+    getEffectDefinition, getEffectPresentation, getStatus,
   } = global.Effects;
+  const { resolveEffect, resolveUnitStateEffectCommands } = global.EffectLifecycle;
   const {
     cloneBoard, hasAnyUnits, getEffectiveAttackValue, getTotalAttackCount, getUnitKey,
     findUnitPos, hasFirstStrike, getActionEffect, withActionAttackEffect, buildAttackQueue,
@@ -20943,7 +20786,7 @@ if (typeof module !== 'undefined' && module.exports) {
         },
       });
       domainEvents.push(...(hitReactions.domainEvents || []));
-      const appliedReactions = applyReactionStateCommands(hitReactions.commands, {
+      const appliedReactions = resolveUnitStateEffectCommands(hitReactions.commands, {
         ...conditionContext,
         playerBoard,
         enemyBoard,
@@ -21452,6 +21295,7 @@ if (typeof module !== 'undefined' && module.exports) {
       get scheduledRevives() { return scheduledRevives; },
       get battleRevivalCount() { return battleRevivalCount; },
       get sacrificeEventCount() { return sacrificeEventCount; },
+      transaction: parentTransaction,
       identityRuntime,
       battleDefinitionId: options.battleDefinitionId || options.battleId || 'battle',
       stateVersion: options.stateVersion || 0,
@@ -22157,19 +22001,9 @@ if (typeof module !== 'undefined' && module.exports) {
 <!-- 敵スポーン管理（予兆＋実体化）。window.Board を参照 -->
 <script>
 // ============================================================
-// enemy_wave_runtime.js - 敵Waveの定義参照・配置Command構築・登場解決
-// ------------------------------------------------------------
-// 責務：
-//   - battle データの waves 配列から、指定ウェーブの配置Commandを構築
-//   - Deploy Lifecycleを通してウェーブ全体の登場処理を解決
-//   - 現在ウェーブの次ウェーブ番号を解決
-//   - 既存マスとの衝突を検出
-//
-// 依存：window.Board / window.DeployLifecycle
-//
-// Godot 移植時の対応：
-//   BattleWaveSpawner.gd（autoload）の spawn_wave() メソッドとして実装。
-//   各 entry は WaveEntry リソースに対応。
+// enemy_wave_runtime.js - 敵Waveの定義参照・配置Command要求構築
+// 責務: Wave順序と定義を参照し、既存盤面との衝突を検証してSummonUnitCommand要求を返す。
+// State変更、Lifecycle実行、Trigger、Boundaryは所有しない。
 // ============================================================
 
 (function () {
@@ -22250,39 +22084,11 @@ if (typeof module !== 'undefined' && module.exports) {
     return { board, log, spawnedKeys, commands, wave };
   }
 
-  // Wave内の全ユニットを一括配置した後、各登場時効果を定義順に解決する。
-  function spawnWaveInTransaction(transaction, battle, waveIndex, options = {}) {
-    if (transaction?.kind !== 'battle_resolution_transaction') {
-      throw new Error('Waveスポーンには親Battle Resolution Transactionが必要です');
-    }
-    if (!window.DeployLifecycle?.resolveDeployCommands) {
-      throw new Error('WaveスポーンにはDeploy Lifecycleが必要です');
-    }
-    const prepared = buildWaveSummonCommands(battle, waveIndex, transaction.state.enemyBoard);
-    if (!prepared.wave) return { ...prepared, applied: false, transactionApplied: true };
-    const resolved = window.DeployLifecycle.resolveDeployCommands(transaction, prepared.commands, {
-      ...options,
-      transaction,
-      sourceSide: 'enemy',
-      battleTurn: options.battleTurn,
-      log: prepared.log,
-      logEachTarget: false,
-    });
-    return {
-      ...prepared,
-      ...resolved,
-      board: transaction.state.enemyBoard,
-      opposingBoard: transaction.state.playerBoard,
-      transactionApplied: true,
-    };
-  }
-
   window.EnemyWaveRuntime = {
     getFirstWaveIndex,
     getNextWaveIndex,
     getWaveDef,
     buildWaveSummonCommands,
-    spawnWave: spawnWaveInTransaction,
   };
 })();
 </script>
@@ -27996,7 +27802,6 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
           value: drawPerTurn + _init.current.firstDrawBonus,
         }, ...pendingDeployCardCommands],
         energyBase: MAX_ENERGY + _init.current.battleEnergyBonus,
-        resetSpellBoost: true,
         includePlayerBoard: true,
       },
       rootContext: {
@@ -28191,7 +27996,6 @@ function BattleScene({ onBattleEnd, waveId, runState }) {
           value: getDrawCountPerTurn(battleRelicEffects),
         }],
         energyBase: MAX_ENERGY + _init.current.battleEnergyBonus,
-        resetSpellBoost: true,
         includePlayerBoard: true,
       },
       rootContext: {
