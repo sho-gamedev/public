@@ -17821,43 +17821,16 @@ if (typeof module !== 'undefined' && module.exports) {
     }),
   });
 
-  // Effectの範囲語彙とBoard Queryの対応。位置関係の計算はBoardが所有する。
-  const PASSIVE_SCOPE_RESOLVERS = Object.freeze({
-    all: { keys: () => window.Board.POS_KEYS },
-    self: { keys: sourceKey => [sourceKey] },
-    ...Object.fromEntries(COLUMNS.map(column => [column, { keys: () => window.Board.getColumnKeys(column) }])),
-    same_lane: { requiresSourcePosition: true, keys: sourceKey => window.Board.getSameLaneKeys(sourceKey) },
-    same_column: { requiresSourcePosition: true, keys: sourceKey => window.Board.getSameColumnKeys(sourceKey) },
-    adjacent_lr: { requiresSourcePosition: true, keys: sourceKey => window.Board.getHorizontalAdjacentKeys(sourceKey) },
-    opposing_front: { requiresSourcePosition: true, keys: sourceKey => [window.Board.getLanePositionKey(sourceKey, 'front')] },
-  });
-
-  // 範囲ルールからBoard上の位置を取得し、占有されている対象だけを返す。
-  function getPassiveScopedTargetKeys(board, sourceKey, scope) {
-    const resolver = Object.hasOwn(PASSIVE_SCOPE_RESOLVERS, scope || 'all')
-      ? PASSIVE_SCOPE_RESOLVERS[scope || 'all'] : null;
-    if (!resolver) throw new Error(`未対応のpassive target scope: ${scope}`);
-    if (resolver.requiresSourcePosition && !sourceKey) {
-      throw new Error(`passive scopeには発生源の位置が必要です: ${scope}`);
-    }
-    return resolver.keys(sourceKey).filter(key => board[key]);
-  }
-
-  function getPassiveEffectTargetKeys(board, sourceKey, effect, fallbackScope = 'all') {
-    const area = effect.targetGridArea || null;
-    const selector = effect.targetSelector || null;
-    if (!selector) return getPassiveScopedTargetKeys(board, sourceKey, area || fallbackScope);
-    if (selector === 'self') return board[sourceKey] ? [sourceKey] : [];
-    if (selector === 'opposing') {
-      const column = COLUMNS.includes(area) ? area : 'front';
-      const targetKey = sourceKey ? window.Board.getLanePositionKey(sourceKey, column) : null;
-      return board[targetKey] ? [targetKey] : [];
-    }
-    const candidates = getPassiveScopedTargetKeys(board, sourceKey, area || 'all');
-    if (selector === 'all') return candidates;
-    if (selector === 'other_allies') return candidates.filter(targetKey => targetKey !== sourceKey);
-    if (isTargetReferenceSelector(selector)) return candidates.filter(key => matchesCardReference(board[key], selector, effect.refId));
-    throw new Error(`未対応のpassive target_selector: ${selector}`);
+  // 正式入口で確定した対象指定を共通Resolverへ渡し、現在の補正先を返す。
+  // 常在補正はPlayerの明示選択を継承せず、読み取りで乱数計画を変更しない。
+  function getUnitModifierTargetKeys(ctx) {
+    const effect = {
+      ...ctx.effect,
+      targetGridArea: ctx.effect.targetGridArea || 'all',
+    };
+    return selectEffectTargetKeys(ctx.board, effect, {
+      ...ctx, effectTargetInput: null, randomPlanReadOnly: true,
+    });
   }
 
   function countPassiveTargets(board, params = {}) {
@@ -17902,9 +17875,7 @@ if (typeof module !== 'undefined' && module.exports) {
     if (!effectId || !getEffectDefinition(effectId) || !getEffectDef(effectId)) {
       throw new Error(`Passive Grantの付与Effectが未定義です: ${effectId || '(空欄)'}`);
     }
-    const targetKeys = grant.scope
-      ? getPassiveScopedTargetKeys(board, sourceKey, grant.scope)
-      : getPassiveEffectTargetKeys(board, sourceKey, effect);
+    const targetKeys = getUnitModifierTargetKeys(ctx);
     return createPassiveResult(ctx, {
       applied: targetKeys.length > 0,
       targetKeys,
@@ -17930,9 +17901,7 @@ if (typeof module !== 'undefined' && module.exports) {
       ? effect.refId
       : (modifier.targetAttribute || effect.targetAttribute || null);
     const targetCardId = modifier.targetCardIdFromRef && !isTargetReferenceSelector(effect.targetSelector) ? effect.refId : modifier.targetCardId;
-    const targetKeys = modifier.scope
-      ? getPassiveScopedTargetKeys(board, sourceKey, modifier.scope)
-      : getPassiveEffectTargetKeys(board, sourceKey, effect);
+    const targetKeys = getUnitModifierTargetKeys(ctx);
     const statModifiers = targetKeys
       .filter(targetKey => {
         const target = board[targetKey];
@@ -18711,13 +18680,14 @@ if (typeof module !== 'undefined' && module.exports) {
   }
 
   // target_grid_area が指す「マスの並び」を、在席の有無に関係なく返す唯一の定義元。
-  // 効果対象の解決（TARGET_AREA_RESOLVERS）と召喚先の解決（空きマス探索）が
+  // 発火型・常在型の効果対象と召喚先の解決（空きマス探索）が
   // 同じ語彙・同じ範囲定義を共有できるよう、範囲定義はここだけに置く。
   const TARGET_AREA_KEY_RESOLVERS = {
     all: () => [...POS_KEYS],
     front: () => LANES.map(lane => `${lane}_front`),
     middle: () => LANES.map(lane => `${lane}_middle`),
     back: () => LANES.map(lane => `${lane}_back`),
+    adjacent_lr: ({ ctx }) => window.Board.getHorizontalAdjacentKeys(ctx.sourceKey),
     // 発生源の直前1マスだけを指す。選択位置への代替や空きマスの飛び越しはしない。
     ahead: ({ ctx }) => {
       const key = window.Board.getAheadPositionKey(ctx.sourceKey);
@@ -18896,10 +18866,9 @@ if (typeof module !== 'undefined' && module.exports) {
     self: ({ board, ctx }) => board[ctx.sourceKey] ? [ctx.sourceKey] : [],
     other_allies: ({ candidates, ctx }) => candidates.filter(key => key !== ctx.sourceKey),
     opposing: ({ board, ctx, area }) => {
-      const lane = String(ctx.sourceKey || '').split('_')[0];
-      if (!lane) return [];
+      if (!ctx.sourceKey) return [];
       const depth = COLUMNS.includes(area) ? area : 'front';
-      const key = `${lane}_${depth}`;
+      const key = window.Board.getLanePositionKey(ctx.sourceKey, depth);
       return board[key] ? [key] : [];
     },
     weakest_atk: ({ board, candidates, ctx }) => {
@@ -18940,6 +18909,7 @@ if (typeof module !== 'undefined' && module.exports) {
       .map(ref => ref.posKey);
   }
 
+  // 共通の範囲とSelectorを順に評価し、盤面上の最終対象を返す。
   function selectEffectTargetKeys(board, effect, ctx) {
     const explicitKeys = getExplicitEffectTargetKeys(board, ctx);
     if (explicitKeys) return explicitKeys;
@@ -20801,7 +20771,7 @@ if (typeof module !== 'undefined' && module.exports) {
     },
     aura_hp_buff_front: {
       execute: resolveCombatRule,
-      unitModifier: { execute: resolvePassiveStatModifier, stat: 'hp', scope: 'front', amount: constantPassiveAmount },
+      unitModifier: { execute: resolvePassiveStatModifier, stat: 'hp', target: { targetGridArea: 'front' }, amount: constantPassiveAmount },
     },
     atk_buff_per_unity: {
       execute: resolveStatBuffPerUnity,
@@ -20823,7 +20793,7 @@ if (typeof module !== 'undefined' && module.exports) {
     },
     aura_atk_buff_all_enemy: {
       execute: resolveCombatRule,
-      unitModifier: { execute: resolvePassiveStatModifier, stat: 'atk', scope: 'all', amount: constantPassiveAmount },
+      unitModifier: { execute: resolvePassiveStatModifier, stat: 'atk', target: { targetGridArea: 'all' }, amount: constantPassiveAmount },
     },
     aura_atk_buff: {
       execute: resolveCombatRule,
@@ -20851,22 +20821,22 @@ if (typeof module !== 'undefined' && module.exports) {
     },
     aura_atk_buff_soldier: {
       execute: resolveCombatRule,
-      unitModifier: { execute: resolvePassiveStatModifier, stat: 'atk', scope: 'all', targetCardIdFromRef: true, amount: constantPassiveAmount },
+      unitModifier: { execute: resolvePassiveStatModifier, stat: 'atk', target: { targetGridArea: 'all' }, targetCardIdFromRef: true, amount: constantPassiveAmount },
       requiresRefId: true,
     },
     aura_hp_buff_soldier: {
       execute: resolveCombatRule,
-      unitModifier: { execute: resolvePassiveStatModifier, stat: 'hp', scope: 'all', targetCardIdFromRef: true, amount: constantPassiveAmount },
+      unitModifier: { execute: resolvePassiveStatModifier, stat: 'hp', target: { targetGridArea: 'all' }, targetCardIdFromRef: true, amount: constantPassiveAmount },
       requiresRefId: true,
     },
     aura_atk_buff_soldier_per_unity: {
       execute: resolveCombatRule,
-      unitModifier: { execute: resolvePassiveStatModifier, stat: 'atk', scope: 'all', targetCardIdFromRef: true, amount: unityPassiveAmount },
+      unitModifier: { execute: resolvePassiveStatModifier, stat: 'atk', target: { targetGridArea: 'all' }, targetCardIdFromRef: true, amount: unityPassiveAmount },
       requiresRefId: true,
     },
     aura_hp_buff_soldier_per_unity: {
       execute: resolveCombatRule,
-      unitModifier: { execute: resolvePassiveStatModifier, stat: 'hp', scope: 'all', targetCardIdFromRef: true, amount: unityPassiveAmount },
+      unitModifier: { execute: resolvePassiveStatModifier, stat: 'hp', target: { targetGridArea: 'all' }, targetCardIdFromRef: true, amount: unityPassiveAmount },
       requiresRefId: true,
     },
     atk_buff_per_equipment: {
@@ -21079,7 +21049,6 @@ if (typeof module !== 'undefined' && module.exports) {
     },
     counter: {
       execute: resolveCounterEffect,
-      attackPermission: { blockedAttackKinds: ['standard'] },
     },
 
     guard: { execute: resolveCombatRule },
@@ -21527,10 +21496,19 @@ if (typeof module !== 'undefined' && module.exports) {
     }
     const execute = getEffectExecutor(effect, effectDefinition);
     if (!execute) throw new Error(`effect実行関数が未定義です: effect_id=${effect.id}`);
+    // 固定対象を持つ補正はRegistryを正本とし、Selectorによるref_idの意味判定も同じ指定で行う。
+    const modifierTarget = effect.timing === 'passive' ? effectDefinition.unitModifier?.target : null;
+    const targetEffect = modifierTarget ? {
+      ...effect,
+      targetGridArea: modifierTarget.targetGridArea || null,
+      targetSelector: modifierTarget.targetSelector || null,
+    } : effect;
     // 値の出どころ（ref_id）を対象解決より前に確定させる。ここで effect.value を
     // 決めておくと、後段のスペル強化ボーナスやスペルウィーク倍率とも自然に合成される。
-    const valuedEffect = resolveEffectValueFromSource(effect, effectContext);
-    const resolvedTargets = boardDomain && (
+    const valuedEffect = resolveEffectValueFromSource(targetEffect, effectContext);
+    // Unit補正は登録定義の固定対象も含めて専用入口から共通Resolverへ渡すため、ここで重ねて選ばない。
+    const unitModifierQuery = effect.timing === 'passive' && !!effectDefinition.unitModifier;
+    const resolvedTargets = !unitModifierQuery && boardDomain && (
       effect.targetGridArea
       || effect.targetSelector
       || effectContext.effectTargetInput?.kind === 'explicit_selection'
