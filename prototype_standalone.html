@@ -17186,6 +17186,7 @@ if (typeof module !== 'undefined' && module.exports) {
     };
   }
 
+  // 境界に従って付与の寿命を進める。正のHP補正の期限切れは現在HPを減算せず上限だけ調整する。
   function advanceRuntimeModifiers(inst, boundary = 'turn_end') {
     if (!inst || !Array.isArray(inst.runtimeModifiers)) return inst;
     if (boundary !== 'turn_end') return { ...inst, runtimeModifiers: inst.runtimeModifiers.filter(modifier => (
@@ -17194,6 +17195,7 @@ if (typeof module !== 'undefined' && module.exports) {
     )) };
     const beforeHpBonus = getRuntimeModifierValue(inst, 'hp_buff', 0);
     const runtimeModifiers = [];
+    let expiredPositiveHpBonus = 0;
     inst.runtimeModifiers.forEach(modifier => {
       const activationDelay = Math.max(0, Math.floor(num(modifier.activationDelay)));
       if (activationDelay > 0) {
@@ -17208,16 +17210,18 @@ if (typeof module !== 'undefined' && module.exports) {
       if (!policy) throw new Error(`未定義のduration_type: ${modifier.durationType}`);
       const advanced = policy.advance(modifier);
       if (advanced) runtimeModifiers.push(advanced);
+      else if (modifier.id === 'hp_buff') expiredPositiveHpBonus += Math.max(0, num(modifier.value));
     });
     let next = { ...inst, runtimeModifiers };
     const afterHpBonus = getRuntimeModifierValue(next, 'hp_buff', 0);
     const hpDelta = afterHpBonus - beforeHpBonus;
-    if (hpDelta !== 0) {
+    if (hpDelta !== 0 || expiredPositiveHpBonus > 0) {
       const nextMaxHp = Math.max(1, num(inst.maxHp, 1) + hpDelta);
       next = {
         ...next,
         maxHp: nextMaxHp,
-        currentHp: Math.max(0, Math.min(nextMaxHp, num(inst.currentHp) + hpDelta)),
+        // HPに関しては負のバフ解除の増減は維持し、期限切れで解除される正のHPバフ分は現在HPを減らさない（最大HPのみを減らす）。
+        currentHp: Math.max(0, Math.min(nextMaxHp, num(inst.currentHp) + hpDelta + expiredPositiveHpBonus)),
       };
     }
     return next;
