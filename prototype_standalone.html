@@ -5639,7 +5639,7 @@ const EQUIPMENTS = [{"id":"iron_sword","name":"鉄の剣","shortName":"鉄の剣
 
 const REWARD_RATES = [{"context":"normal_battle","type":"unit","enabled":false,"weights":{"common":60,"uncommon":35,"rare":5},"notes":"通常戦闘フォロワー報酬"},{"context":"normal_battle","type":"spell","enabled":true,"weights":{"common":60,"uncommon":35,"rare":5},"notes":"通常戦闘スペル報酬"},{"context":"normal_battle","type":"evolution","enabled":false,"weights":{"common":60,"uncommon":35,"rare":5},"notes":"通常戦闘進化カード報酬"},{"context":"normal_battle","type":"relic","enabled":false,"weights":{"common":0,"uncommon":0,"rare":0},"notes":"通常戦闘ではレリック報酬なし"},{"context":"elite_battle","type":"unit","enabled":false,"weights":{"common":60,"uncommon":35,"rare":5},"notes":"エリート戦闘フォロワー報酬"},{"context":"elite_battle","type":"spell","enabled":true,"weights":{"common":60,"uncommon":35,"rare":5},"notes":"エリート戦闘スペル報酬"},{"context":"elite_battle","type":"evolution","enabled":false,"weights":{"common":60,"uncommon":35,"rare":5},"notes":"エリート戦闘進化カード報酬"},{"context":"elite_battle","type":"relic","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"エリート戦闘レリック報酬なし"},{"context":"boss_reward","type":"unit","enabled":false,"weights":{"common":0,"uncommon":0,"rare":100},"notes":"ボスフォロワー報酬"},{"context":"boss_reward","type":"spell","enabled":true,"weights":{"common":0,"uncommon":0,"rare":100},"notes":"ボススペル報酬"},{"context":"boss_reward","type":"evolution","enabled":false,"weights":{"common":0,"uncommon":0,"rare":100},"notes":"ボス進化カード報酬"},{"context":"boss_reward","type":"relic","enabled":true,"weights":{"common":0,"uncommon":0,"rare":100},"notes":"ボスレリック報酬"},{"context":"shop","type":"unit","enabled":true,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"ショップフォロワー枠"},{"context":"shop","type":"spell","enabled":true,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"ショップスペル枠"},{"context":"shop","type":"relic","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"ショップレリック枠→ショップでのレリック販売はなし"},{"context":"shop","type":"equipment","enabled":true,"weights":{"common":55,"uncommon":40,"rare":5},"notes":"ショップ装備枠"},{"context":"event_card","type":"unit","enabled":true,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"イベントフォロワー報酬"},{"context":"event_card","type":"spell","enabled":true,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"イベントスペル報酬"},{"context":"event_card","type":"evolution","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"イベント進化カード報酬"},{"context":"event_card","type":"equipment","enabled":true,"weights":{"common":55,"uncommon":40,"rare":5},"notes":null},{"context":"event_relic","type":"relic","enabled":false,"weights":{"common":60,"uncommon":35,"rare":5},"notes":"イベントレリック報酬なし"},{"context":"event_equipment","type":"equipment","enabled":true,"weights":{"common":55,"uncommon":40,"rare":5},"notes":null},{"context":"evolution_pick","type":"evolution","enabled":false,"weights":{"common":50,"uncommon":40,"rare":10},"notes":"進化専用マス報酬"},{"context":"elite_battle","type":"equipment","enabled":true,"weights":{"common":55,"uncommon":40,"rare":5},"notes":"エリート勝利後の追加ユニット装備"}];
 
-const GAME_PARAMS = [{"group":"spell_upgrade_cost_delta","key":"starter_royal","value":0,"enabled":true,"notes":"ロイヤルクラス選択時、全スペルの進化魔力コストに加算する。例：2 で全体的に+2"},{"group":"spell_upgrade_cost_delta","key":"starter_magician","value":0,"enabled":true,"notes":"マジシャンクラス選択時の補正"},{"group":"spell_upgrade_cost_delta","key":"starter_mixed","value":0,"enabled":true,"notes":"混合クラス選択時の補正"},{"group":"reward_card","key":"card_option_count","value":3,"enabled":true,"notes":"カード報酬の選択肢数の基準値"},{"group":"reward_relic","key":"relic_option_count","value":3,"enabled":true,"notes":"レリック報酬の選択肢数の基準値"},{"group":"player_life","key":"starting_hearts","value":5,"enabled":true,"notes":"ラン開始時のプレイヤー初期ハート数"},{"group":"player_life","key":"max_hearts","value":5,"enabled":true,"notes":"プレイヤーの基本最大ハート数"},{"group":"player_life","key":"rest_heal_hearts","value":3,"enabled":true,"notes":"休憩マスで回復するハート数"},{"group":"player_life","key":"revive_hearts","value":1,"enabled":true,"notes":"復活時に戻るハート数"},{"group":"player_life","key":"boss_clear_heal_hearts","value":5,"enabled":true,"notes":"第1層・第2層ボス撃破時のハート回復量"},{"group":"player_life","key":"floor_3_boss_clear_heal_hearts","value":0,"enabled":true,"notes":"第3層ボス撃破時のハート回復量。0なら回復しない"},{"group":"spell_upgrade_cost_delta","key":"royal","value":0,"enabled":true,"notes":"ロイヤルをメインクラスに選択した時、全スペルの進化魔力コストに加算する"},{"group":"spell_upgrade_cost_delta","key":"magician","value":0,"enabled":true,"notes":"マジシャンをメインクラスに選択した時、全スペルの進化魔力コストに加算する"},{"group":"spell_upgrade_cost_delta","key":"necromancer","value":0,"enabled":true,"notes":"マジシャンをメインクラスに選択した時、全スペルの進化魔力コストに加算する"},{"group":"battle_feature","key":"super_unity_usage_limit","value":1,"enabled":true,"notes":"超団結の戦闘中使用回数の基準値"},{"group":"battle_feature","key":"magician_hand_spell_discount_usage_limit","value":1,"enabled":true,"notes":"マジシャンクラススキルの戦闘中使用回数の基準値"},{"group":"battle_feature","key":"necromancer_sacrifice_usage_limit","value":1,"enabled":true,"notes":"ネクロマンサークラススキルの1ターン中使用回数の基準値"},{"group":"shop_card_lineup","key":"slot_count","value":3,"enabled":true,"notes":"ショップに並ぶカード枚数"},{"group":"shop_card_price","key":"common_min","value":50,"enabled":true,"notes":"コモン価格の下限"},{"group":"shop_card_price","key":"common_max","value":70,"enabled":true,"notes":"コモン価格の上限"},{"group":"shop_card_price","key":"uncommon_min","value":80,"enabled":true,"notes":"アンコモン価格の下限"},{"group":"shop_card_price","key":"uncommon_max","value":110,"enabled":true,"notes":"アンコモン価格の上限"},{"group":"shop_card_price","key":"rare_min","value":120,"enabled":true,"notes":"レア価格の下限"},{"group":"shop_card_price","key":"rare_max","value":150,"enabled":true,"notes":"レア価格の上限"},{"group":"shop_reroll","key":"price","value":50,"enabled":true,"notes":"ラインナップ一括引き直し料金"},{"group":"shop_reroll","key":"max_count","value":1,"enabled":true,"notes":"リロール回数上限"},{"group":"shop_equipment_pull","key":"pull_1_price","value":75,"enabled":true,"notes":"装備抽選1回目の料金"},{"group":"shop_equipment_pull","key":"pull_2_price","value":110,"enabled":true,"notes":"装備抽選2回目の料金"},{"group":"shop_equipment_pull","key":"pull_3_price","value":150,"enabled":true,"notes":"装備抽選3回目の料金"},{"group":"shop_equipment_pull","key":"pull_4_price","value":200,"enabled":true,"notes":"装備抽選4回目の料金"},{"group":"shop_equipment_pull","key":"max_pulls","value":4,"enabled":true,"notes":"装備抽選の回数上限"},{"group":"shop_removal","key":"price","value":75,"enabled":true,"notes":"カード除去の料金"},{"group":"shop_removal","key":"max_count","value":1,"enabled":true,"notes":"1ショップあたりのカード除去回数上限"},{"group":"shop_spell_equipment_lineup","key":"slot_count","value":3,"enabled":true,"notes":"ショップに並ぶスペル装備数"},{"group":"battle","key":"battle_win_gold","value":100,"enabled":true,"notes":"戦闘勝利時の基本報酬ゴールド。獲得額は gold_gain_rate で補正される"},{"group":"battle","key":"draw_per_turn","value":5,"enabled":true,"notes":"ターン開始時のドロー枚数の基準値"},{"group":"battle","key":"energy_per_turn","value":3,"enabled":true,"notes":"第1層の通常Player Turn開始時に回復する基礎エナジー。階層増加量と上限を適用して各層の回復量を決定する"},{"group":"battle","key":"energy_per_turn_max","value":5,"enabled":true,"notes":"階層由来の通常ターン基礎エナジー上限"},{"group":"battle","key":"energy_per_floor_increment","value":1,"enabled":true,"notes":"階層進行ごとの通常ターン基礎エナジー増加量"},{"group":"battle","key":"initial_deployment_hand_size","value":5,"enabled":true,"notes":"配置フェーズ開始時に山札から手札へ移すユニットカードの上限"},{"group":"battle","key":"deployment_energy_base","value":3,"enabled":true,"notes":"第1層の配置フェーズ基礎エナジー"},{"group":"battle","key":"deployment_energy_per_floor_increment","value":1,"enabled":true,"notes":"階層進行ごとの配置フェーズ基礎エナジー増加量"},{"group":"battle","key":"deployment_energy_max","value":5,"enabled":true,"notes":"階層由来の配置フェーズ基礎エナジー上限。レリック等による追加エナジーは制限しない"},{"group":"encounter_elite","key":"enemy_atk_bonus","value":3,"enabled":true,"notes":"エリート戦闘中の全敵ATK加算。0以上の整数"},{"group":"encounter_elite","key":"equipment_reward_count","value":2,"enabled":true,"notes":"エリート勝利後の追加装備獲得機会数。0以上の整数"},{"group":"encounter_elite","key":"spell_upgrade_reward_count","value":1,"enabled":true,"notes":"エリート追加報酬の恒久スペル強化枚数。0以上の整数"},{"group":"encounter_elite","key":"gold_reward_amount","value":100,"enabled":true,"notes":"エリート追加報酬の基礎Gold額。挑戦前に獲得量補正を適用する。0以上の整数"},{"group":"encounter_elite","key":"equipment_reward_weight","value":1,"enabled":true,"notes":"追加装備報酬の抽選重み。0で抽選対象外。0以上の整数"},{"group":"encounter_elite","key":"spell_upgrade_reward_weight","value":1,"enabled":true,"notes":"恒久スペル強化報酬の抽選重み。0で抽選対象外。0以上の整数"},{"group":"encounter_elite","key":"gold_reward_weight","value":1,"enabled":true,"notes":"追加Gold報酬の抽選重み。0で抽選対象外。0以上の整数"},{"group":"battle_feature","key":"rest_pocket_usage_limit","value":1,"enabled":true,"notes":"休息ポケットの1ターン中使用回数の上限。配置フェーズと通常ターン1は共通枠"},{"group":"map_floor_1","key":"segment_1_length","value":3,"enabled":true,"notes":"第1層前半の報酬マス数。進化解放を含む"},{"group":"map_floor_1","key":"segment_2_length","value":4,"enabled":true,"notes":"第1層後半の報酬マス数。進化解放を含む"},{"group":"map_floor_1","key":"segment_1_min_evolution_unlock","value":1,"enabled":true,"notes":"前半の全分岐内に置く進化解放マスの最低数"},{"group":"map_floor_1","key":"segment_2_min_evolution_unlock","value":1,"enabled":true,"notes":"後半の全分岐内に置く進化解放マスの最低数"},{"group":"map_floor_1","key":"route_min_unit","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートのユニット数"},{"group":"map_floor_1","key":"route_min_spell","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートのスペル数"},{"group":"map_floor_1","key":"route_min_equipment","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートの装備数"},{"group":"map_floor_1","key":"route_min_rest","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートの休憩数"},{"group":"map_floor_1","key":"route_min_shop","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートのショップ数"},{"group":"map_floor_2","key":"segment_1_length","value":3,"enabled":true,"notes":"第2層前半の報酬マス数。進化解放を含む"},{"group":"map_floor_2","key":"segment_2_length","value":4,"enabled":true,"notes":"第2層後半の報酬マス数。進化解放を含む"},{"group":"map_floor_2","key":"segment_1_min_evolution_unlock","value":1,"enabled":true,"notes":"前半の全分岐内に置く進化解放マスの最低数"},{"group":"map_floor_2","key":"segment_2_min_evolution_unlock","value":1,"enabled":true,"notes":"後半の全分岐内に置く進化解放マスの最低数"},{"group":"map_floor_2","key":"route_min_unit","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートのユニット数"},{"group":"map_floor_2","key":"route_min_spell","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートのスペル数"},{"group":"map_floor_2","key":"route_min_equipment","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートの装備数"},{"group":"map_floor_2","key":"route_min_rest","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートの休憩数"},{"group":"map_floor_3","key":"segment_1_length","value":2,"enabled":true,"notes":"第3層は1区間を維持。報酬マス数は調整可能"},{"group":"map_floor_3","key":"segment_1_min_evolution_unlock","value":1,"enabled":true,"notes":"第3層の全分岐内に置く進化解放マスの最低数"},{"group":"map_reward_weight","key":"unit","value":3,"enabled":true,"notes":"ランダムマップの抽選重み"},{"group":"map_reward_weight","key":"spell","value":2,"enabled":true,"notes":"ランダムマップの抽選重み"},{"group":"map_reward_weight","key":"equipment","value":3,"enabled":true,"notes":"ランダムマップの抽選重み"},{"group":"map_reward_weight","key":"rest","value":1,"enabled":true,"notes":"ランダムマップの抽選重み"},{"group":"map_reward_weight","key":"shop","value":1,"enabled":true,"notes":"ランダムマップの抽選重み"},{"group":"map_reward_weight","key":"event","value":1,"enabled":true,"notes":"ランダムマップの抽選重み"},{"group":"map_reward_weight","key":"evolution_unlock","value":1,"enabled":true,"notes":"進化解放マスの抽選重み"},{"group":"map_route_max","key":"unit","value":3,"enabled":true,"notes":"完全ルート上の出現上限"},{"group":"map_route_max","key":"spell","value":2,"enabled":true,"notes":"完全ルート上の出現上限"},{"group":"map_route_max","key":"equipment","value":3,"enabled":true,"notes":"完全ルート上の出現上限"},{"group":"map_route_max","key":"rest","value":1,"enabled":true,"notes":"完全ルート上の出現上限"},{"group":"map_route_max","key":"shop","value":1,"enabled":true,"notes":"完全ルート上の出現上限"},{"group":"map_route_max","key":"event","value":1,"enabled":true,"notes":"完全ルート上の出現上限"},{"group":"map_route_max","key":"evolution_unlock","value":2,"enabled":true,"notes":"完全ルート上の進化解放マスの出現上限"}];
+const GAME_PARAMS = [{"group":"spell_upgrade_cost_delta","key":"starter_royal","value":0,"enabled":true,"notes":"ロイヤルクラス選択時、全スペルの進化魔力コストに加算する。例：2 で全体的に+2"},{"group":"spell_upgrade_cost_delta","key":"starter_magician","value":0,"enabled":true,"notes":"マジシャンクラス選択時の補正"},{"group":"spell_upgrade_cost_delta","key":"starter_mixed","value":0,"enabled":true,"notes":"混合クラス選択時の補正"},{"group":"reward_card","key":"card_option_count","value":3,"enabled":true,"notes":"カード報酬の選択肢数の基準値"},{"group":"reward_relic","key":"relic_option_count","value":3,"enabled":true,"notes":"レリック報酬の選択肢数の基準値"},{"group":"player_life","key":"starting_hearts","value":5,"enabled":true,"notes":"ラン開始時のプレイヤー初期ハート数"},{"group":"player_life","key":"max_hearts","value":5,"enabled":true,"notes":"プレイヤーの基本最大ハート数"},{"group":"player_life","key":"rest_heal_hearts","value":3,"enabled":true,"notes":"休憩マスで回復するハート数"},{"group":"player_life","key":"revive_hearts","value":1,"enabled":true,"notes":"復活時に戻るハート数"},{"group":"player_life","key":"boss_clear_heal_hearts","value":5,"enabled":true,"notes":"第1層・第2層ボス撃破時のハート回復量"},{"group":"player_life","key":"floor_3_boss_clear_heal_hearts","value":0,"enabled":true,"notes":"第3層ボス撃破時のハート回復量。0なら回復しない"},{"group":"spell_upgrade_cost_delta","key":"royal","value":0,"enabled":true,"notes":"ロイヤルをメインクラスに選択した時、全スペルの進化魔力コストに加算する"},{"group":"spell_upgrade_cost_delta","key":"magician","value":0,"enabled":true,"notes":"マジシャンをメインクラスに選択した時、全スペルの進化魔力コストに加算する"},{"group":"spell_upgrade_cost_delta","key":"necromancer","value":0,"enabled":true,"notes":"マジシャンをメインクラスに選択した時、全スペルの進化魔力コストに加算する"},{"group":"battle_feature","key":"super_unity_usage_limit","value":1,"enabled":true,"notes":"超団結の戦闘中使用回数の基準値"},{"group":"battle_feature","key":"magician_hand_spell_discount_usage_limit","value":1,"enabled":true,"notes":"マジシャンクラススキルの戦闘中使用回数の基準値"},{"group":"battle_feature","key":"necromancer_sacrifice_usage_limit","value":1,"enabled":true,"notes":"ネクロマンサークラススキルの1ターン中使用回数の基準値"},{"group":"shop_card_lineup","key":"slot_count","value":3,"enabled":true,"notes":"ショップに並ぶカード枚数"},{"group":"shop_card_price","key":"common_min","value":50,"enabled":true,"notes":"コモン価格の下限"},{"group":"shop_card_price","key":"common_max","value":70,"enabled":true,"notes":"コモン価格の上限"},{"group":"shop_card_price","key":"uncommon_min","value":80,"enabled":true,"notes":"アンコモン価格の下限"},{"group":"shop_card_price","key":"uncommon_max","value":110,"enabled":true,"notes":"アンコモン価格の上限"},{"group":"shop_card_price","key":"rare_min","value":120,"enabled":true,"notes":"レア価格の下限"},{"group":"shop_card_price","key":"rare_max","value":150,"enabled":true,"notes":"レア価格の上限"},{"group":"shop_reroll","key":"price","value":50,"enabled":true,"notes":"ラインナップ一括引き直し料金"},{"group":"shop_reroll","key":"max_count","value":1,"enabled":true,"notes":"リロール回数上限"},{"group":"shop_equipment_pull","key":"pull_1_price","value":75,"enabled":true,"notes":"装備抽選1回目の料金"},{"group":"shop_equipment_pull","key":"pull_2_price","value":110,"enabled":true,"notes":"装備抽選2回目の料金"},{"group":"shop_equipment_pull","key":"pull_3_price","value":150,"enabled":true,"notes":"装備抽選3回目の料金"},{"group":"shop_equipment_pull","key":"pull_4_price","value":200,"enabled":true,"notes":"装備抽選4回目の料金"},{"group":"shop_equipment_pull","key":"max_pulls","value":4,"enabled":true,"notes":"装備抽選の回数上限"},{"group":"shop_removal","key":"price","value":75,"enabled":true,"notes":"カード除去の料金"},{"group":"shop_removal","key":"max_count","value":1,"enabled":true,"notes":"1ショップあたりのカード除去回数上限"},{"group":"shop_spell_equipment_lineup","key":"slot_count","value":3,"enabled":true,"notes":"ショップに並ぶスペル装備数"},{"group":"battle","key":"battle_win_gold","value":100,"enabled":true,"notes":"戦闘勝利時の基本報酬ゴールド。獲得額は gold_gain_rate で補正される"},{"group":"battle","key":"draw_per_turn","value":5,"enabled":true,"notes":"ターン開始時のドロー枚数の基準値"},{"group":"battle","key":"energy_per_turn","value":3,"enabled":true,"notes":"第1層の通常Player Turn開始時に回復する基礎エナジー。階層増加量と上限を適用して各層の回復量を決定する"},{"group":"battle","key":"energy_per_turn_max","value":5,"enabled":true,"notes":"階層由来の通常ターン基礎エナジー上限"},{"group":"battle","key":"energy_per_floor_increment","value":1,"enabled":true,"notes":"階層進行ごとの通常ターン基礎エナジー増加量"},{"group":"battle","key":"initial_deployment_hand_size","value":5,"enabled":true,"notes":"配置フェーズ開始時に山札から手札へ移すユニットカードの上限"},{"group":"battle","key":"deployment_energy_base","value":3,"enabled":true,"notes":"第1層の配置フェーズ基礎エナジー"},{"group":"battle","key":"deployment_energy_per_floor_increment","value":1,"enabled":true,"notes":"階層進行ごとの配置フェーズ基礎エナジー増加量"},{"group":"battle","key":"deployment_energy_max","value":5,"enabled":true,"notes":"階層由来の配置フェーズ基礎エナジー上限。レリック等による追加エナジーは制限しない"},{"group":"encounter_elite","key":"enemy_atk_bonus","value":3,"enabled":true,"notes":"エリート戦闘中の全敵ATK加算。0以上の整数"},{"group":"encounter_elite","key":"equipment_reward_count","value":2,"enabled":true,"notes":"エリート勝利後の追加装備獲得機会数。0以上の整数"},{"group":"encounter_elite","key":"spell_upgrade_reward_count","value":1,"enabled":true,"notes":"エリート追加報酬の恒久スペル強化枚数。0以上の整数"},{"group":"encounter_elite","key":"gold_reward_amount","value":100,"enabled":true,"notes":"エリート追加報酬の基礎Gold額。挑戦前に獲得量補正を適用する。0以上の整数"},{"group":"encounter_elite","key":"equipment_reward_weight","value":1,"enabled":true,"notes":"追加装備報酬の抽選重み。0で抽選対象外。0以上の整数"},{"group":"encounter_elite","key":"spell_upgrade_reward_weight","value":1,"enabled":true,"notes":"恒久スペル強化報酬の抽選重み。0で抽選対象外。0以上の整数"},{"group":"encounter_elite","key":"gold_reward_weight","value":1,"enabled":true,"notes":"追加Gold報酬の抽選重み。0で抽選対象外。0以上の整数"},{"group":"battle_feature","key":"rest_pocket_usage_limit","value":1,"enabled":true,"notes":"休息ポケットの1ターン中使用回数の上限。配置フェーズと通常ターン1は共通枠"},{"group":"map_floor_1","key":"segment_1_length","value":3,"enabled":true,"notes":"第1層前半の報酬マス数。進化解放を含む"},{"group":"map_floor_1","key":"segment_2_length","value":4,"enabled":true,"notes":"第1層後半の報酬マス数。進化解放を含む"},{"group":"map_floor_1","key":"segment_1_min_evolution_unlock","value":1,"enabled":true,"notes":"前半の全分岐内に置く進化解放マスの最低数"},{"group":"map_floor_1","key":"segment_2_min_evolution_unlock","value":1,"enabled":true,"notes":"後半の全分岐内に置く進化解放マスの最低数"},{"group":"map_floor_1","key":"route_min_unit","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートのユニット数"},{"group":"map_floor_1","key":"route_min_spell","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートのスペル数"},{"group":"map_floor_1","key":"route_min_equipment","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートの装備数"},{"group":"map_floor_1","key":"route_min_rest","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートの休憩数"},{"group":"map_floor_1","key":"route_min_shop","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートのショップ数"},{"group":"map_floor_2","key":"segment_1_length","value":3,"enabled":true,"notes":"第2層前半の報酬マス数。進化解放を含む"},{"group":"map_floor_2","key":"segment_2_length","value":4,"enabled":true,"notes":"第2層後半の報酬マス数。進化解放を含む"},{"group":"map_floor_2","key":"segment_1_min_evolution_unlock","value":1,"enabled":true,"notes":"前半の全分岐内に置く進化解放マスの最低数"},{"group":"map_floor_2","key":"segment_2_min_evolution_unlock","value":1,"enabled":true,"notes":"後半の全分岐内に置く進化解放マスの最低数"},{"group":"map_floor_2","key":"route_min_unit","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートのユニット数"},{"group":"map_floor_2","key":"route_min_spell","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートのスペル数"},{"group":"map_floor_2","key":"route_min_equipment","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートの装備数"},{"group":"map_floor_2","key":"route_min_rest","value":1,"enabled":true,"notes":"全区間を通じて最低保証する1ルートの休憩数"},{"group":"map_floor_3","key":"segment_1_length","value":2,"enabled":true,"notes":"第3層は1区間を維持。報酬マス数は調整可能"},{"group":"map_floor_3","key":"segment_1_min_evolution_unlock","value":1,"enabled":true,"notes":"第3層の全分岐内に置く進化解放マスの最低数"},{"group":"map_reward_weight","key":"unit","value":3,"enabled":true,"notes":"ランダムマップの抽選重み"},{"group":"map_reward_weight","key":"spell","value":2,"enabled":true,"notes":"ランダムマップの抽選重み"},{"group":"map_reward_weight","key":"equipment","value":3,"enabled":true,"notes":"ランダムマップの抽選重み"},{"group":"map_reward_weight","key":"rest","value":1,"enabled":true,"notes":"ランダムマップの抽選重み"},{"group":"map_reward_weight","key":"shop","value":1,"enabled":true,"notes":"ランダムマップの抽選重み"},{"group":"map_reward_weight","key":"event","value":1,"enabled":true,"notes":"ランダムマップの抽選重み"},{"group":"map_reward_weight","key":"evolution_unlock","value":1,"enabled":true,"notes":"進化解放マスの抽選重み"},{"group":"map_route_max","key":"unit","value":3,"enabled":true,"notes":"完全ルート上の出現上限"},{"group":"map_route_max","key":"spell","value":2,"enabled":true,"notes":"完全ルート上の出現上限"},{"group":"map_route_max","key":"equipment","value":3,"enabled":true,"notes":"完全ルート上の出現上限"},{"group":"map_route_max","key":"rest","value":1,"enabled":true,"notes":"完全ルート上の出現上限"},{"group":"map_route_max","key":"shop","value":1,"enabled":true,"notes":"完全ルート上の出現上限"},{"group":"map_route_max","key":"event","value":1,"enabled":true,"notes":"完全ルート上の出現上限"},{"group":"map_route_max","key":"evolution_unlock","value":2,"enabled":true,"notes":"完全ルート上の進化解放マスの出現上限"},{"group":"map_floor_1","key":"initial_reward_count","value":0,"enabled":true,"notes":"第1戦前の報酬マス数。1ルートあたりの数。0なら戦闘から開始"},{"group":"map_floor_2","key":"initial_reward_count","value":3,"enabled":true,"notes":"第1戦前の報酬マス数。1ルートあたりの数。0なら戦闘から開始"},{"group":"map_floor_3","key":"initial_reward_count","value":3,"enabled":true,"notes":"第1戦前の報酬マス数。1ルートあたりの数。0なら戦闘から開始"}];
 
 const PRESENTATION_CUES = [{"rowType":"cue","id":"attack","durationMs":400,"enabled":true,"sfxId":"slash","attackMotion":true,"leadMs":0,"gapMs":0},{"rowType":"cue","id":"counter","durationMs":400,"enabled":true,"sfxId":"slash","attackMotion":true,"leadMs":0,"gapMs":0},{"rowType":"cue","id":"domain_damage","durationMs":300,"enabled":true,"sfxId":null,"attackMotion":false,"leadMs":0,"gapMs":120},{"rowType":"cue","id":"defeat","durationMs":420,"enabled":true,"sfxId":null,"attackMotion":false,"leadMs":0,"gapMs":0},{"rowType":"cue","id":"revive","durationMs":460,"enabled":true,"sfxId":null,"attackMotion":false,"leadMs":0,"gapMs":0},{"rowType":"cue","id":"evolution","durationMs":460,"enabled":true,"sfxId":"evolve","attackMotion":false,"leadMs":0,"gapMs":0},{"rowType":"cue","id":"effect","durationMs":720,"enabled":true,"sfxId":null,"attackMotion":false,"leadMs":40,"gapMs":300},{"rowType":"cue","id":"spell_upgrade","durationMs":700,"enabled":true,"sfxId":"evolve","attackMotion":false,"leadMs":0,"gapMs":0},{"rowType":"timing","id":"attackGap","durationMs":300,"enabled":true},{"rowType":"timing","id":"lunge","durationMs":340,"enabled":true},{"rowType":"timing","id":"cast","durationMs":520,"enabled":true},{"rowType":"timing","id":"hit","durationMs":280,"enabled":true},{"rowType":"timing","id":"areaSlash","durationMs":320,"enabled":true},{"rowType":"timing","id":"areaRipple","durationMs":360,"enabled":true},{"rowType":"timing","id":"areaDelay","durationMs":40,"enabled":true},{"rowType":"timing","id":"reviveMotion","durationMs":450,"enabled":true},{"rowType":"timing","id":"targetPulse","durationMs":320,"enabled":true},{"rowType":"timing","id":"attackImpact","durationMs":0,"enabled":true},{"rowType":"profile","id":"on_attack","durationMs":null,"enabled":true,"playbackAnchor":"attack_start","delayMs":0,"cueId":null,"fxKey":null,"sfxId":null},{"rowType":"profile","id":"independent","durationMs":null,"enabled":true,"playbackAnchor":"independent","delayMs":0,"cueId":null,"fxKey":null,"sfxId":null},{"rowType":"profile","id":"delayed_followup","durationMs":null,"enabled":true,"playbackAnchor":"independent","delayMs":120,"cueId":null,"fxKey":null,"sfxId":null}];
 
@@ -9248,13 +9248,14 @@ function getRouteMaximums() {
   return getRewardParameters('map_route_max');
 }
 
-// 層ごとの区間長・全区間を通した最低保証・区間内の最低保証を一つの設定に組み立てる。
+// 層の開始報酬数・戦闘間の区間長・最低保証を検証し、全報酬を同じルート上限へ含める。
 function getFloorConfig(floor) {
   const values = window.GameParams.getGroupNumbers(`map_floor_${floor}`);
   if (!Object.keys(values).length) throw new Error(`Unsupported random map floor: ${floor}`);
   const lengths = {}, minimums = {}, segmentMinimums = {};
   for (const [key, value] of Object.entries(values)) {
     if (!Number.isInteger(value) || value < 0) throw new Error(`Invalid map parameter: ${floor}/${key}`);
+    if (key === 'initial_reward_count') continue;
     let match = /^segment_([1-9]\d*)_length$/.exec(key);
     if (match) {
       if (!value) throw new Error(`Map segment length must be positive: ${floor}/${key}`);
@@ -9270,6 +9271,8 @@ function getFloorConfig(floor) {
     }
     throw new Error(`Unknown map parameter: ${floor}/${key}`);
   }
+  if (!Object.hasOwn(values, 'initial_reward_count')) throw new Error(`Missing map parameter: ${floor}/initial_reward_count`);
+  const initialRewardCount = values.initial_reward_count;
   const count = Object.keys(lengths).length;
   if (!count || Array.from({ length: count }, (_, i) => i + 1).some(i => !lengths[i])
     || Object.keys(segmentMinimums).some(i => !lengths[i])) throw new Error(`Invalid map segments: ${floor}`);
@@ -9283,7 +9286,7 @@ function getFloorConfig(floor) {
   });
   const maximums = getRouteMaximums();
   const weights = getRewardParameters('map_reward_weight');
-  const totalLength = segmentLengths.reduce((a, b) => a + b, 0);
+  const totalLength = initialRewardCount + segmentLengths.reduce((a, b) => a + b, 0);
   if (Object.values(minimums).reduce((a, b) => a + b, 0) > totalLength
     || Object.values(maximums).reduce((a, b) => a + b, 0) < totalLength) {
     throw new Error(`Map route limits cannot fit the configured length: ${floor}`);
@@ -9294,7 +9297,7 @@ function getFloorConfig(floor) {
       .some(([type, min]) => min > 0 && (weights[type] === 0 || maximums[type] === 0))) {
     throw new Error(`Map minimums conflict with weights or limits: ${floor}`);
   }
-  return { segmentLengths, minPerGuaranteedRoute: minimums, minPerSegment };
+  return { initialRewardCount, segmentLengths, minPerGuaranteedRoute: minimums, minPerSegment };
 }
 
 function shuffleValues(values, rng) {
@@ -9469,17 +9472,31 @@ function buildMapForFloor(floor, options = {}) {
   const normalizedFloor = Number(floor);
   const config = getFloorConfig(normalizedFloor);
   const rng = options.rng || Math.random;
-  const segmentRouteTypes = buildSegmentRouteTypes(config, rng);
+  // 開始報酬も既存の区間生成へ渡し、抽選・最低保証・ルート上限を二重実装しない。
+  const hasInitialRewards = config.initialRewardCount > 0;
+  const rewardConfig = hasInitialRewards ? {
+    ...config,
+    segmentLengths: [config.initialRewardCount, ...config.segmentLengths],
+    minPerSegment: [{}, ...config.minPerSegment],
+  } : config;
+  const segmentRouteTypes = buildSegmentRouteTypes(rewardConfig, rng);
   const nodes = {};
   const edges = {};
-  let currentRow = 0;
+  const startNodeIds = [];
+  let currentRow = hasInitialRewards ? -1 : 0;
+  let currentAnchorId = null;
 
-  const firstAnchor = createBattleAnchor(normalizedFloor, 0, currentRow, false);
-  nodes[firstAnchor.id] = firstAnchor;
-  let currentAnchorId = firstAnchor.id;
+  if (!hasInitialRewards) {
+    const firstAnchor = createBattleAnchor(normalizedFloor, 0, currentRow, false);
+    nodes[firstAnchor.id] = firstAnchor;
+    currentAnchorId = firstAnchor.id;
+    startNodeIds.push(firstAnchor.id);
+  }
 
-  segmentRouteTypes.forEach((routes, segmentIndex) => {
-    const routeLength = config.segmentLengths[segmentIndex];
+  segmentRouteTypes.forEach((routes, rewardSegmentIndex) => {
+    // 開始区間はs0、既存の戦闘間区間はs1以降のIDを維持する。
+    const segmentIndex = rewardSegmentIndex - (hasInitialRewards ? 1 : 0);
+    const routeLength = rewardConfig.segmentLengths[rewardSegmentIndex];
     const columns = [0, 1, 2];
     const routeEndIds = [];
 
@@ -9489,14 +9506,15 @@ function buildMapForFloor(floor, options = {}) {
         const nodeRow = currentRow + nodeIndex + 1;
         const id = `f${normalizedFloor}_s${segmentIndex + 1}_p${routeIndex + 1}_n${nodeIndex + 1}`;
         nodes[id] = createRandomRewardNode(id, nodeRow, columns[routeIndex], rewardType);
-        connectMapNodes(edges, previousId, id);
+        if (previousId) connectMapNodes(edges, previousId, id);
+        else startNodeIds.push(id);
         previousId = id;
       });
       routeEndIds.push(previousId);
     });
 
     currentRow += routeLength + 1;
-    const isBoss = segmentIndex === segmentRouteTypes.length - 1;
+    const isBoss = rewardSegmentIndex === segmentRouteTypes.length - 1;
     const nextAnchor = createBattleAnchor(normalizedFloor, segmentIndex + 1, currentRow, isBoss);
     nodes[nextAnchor.id] = nextAnchor;
     routeEndIds.forEach(endId => connectMapNodes(edges, endId, nextAnchor.id));
@@ -9506,7 +9524,7 @@ function buildMapForFloor(floor, options = {}) {
   return {
     nodes,
     edges,
-    startNodeIds: [firstAnchor.id],
+    startNodeIds,
     eliteNodeId: null,
     bossNodeId: currentAnchorId,
     floor: normalizedFloor,
@@ -15340,7 +15358,7 @@ if (typeof module !== 'undefined' && module.exports) {
     };
   }
 
-  // Trace生成側が明示した開始・着弾・終了を再生する。Group・UIDや後続Stepから対応を推測しない。
+  // 明示された攻撃IDで束ねた着弾を再生し、確定Snapshotは元の順序で表示する。
   function buildTimeline(trace = [], options = {}) {
     const timings = getTimings(options.timings);
     const queue = [];
@@ -15348,6 +15366,7 @@ if (typeof module !== 'undefined' && module.exports) {
     const pendingEnds = [];
     let elapsedMs = 0;
     let attackSeen = false;
+    let pendingImpact = null;
 
     // 表示列の経過待機時間も同時に積算し、開始済みMotionを着弾で最初から待ち直さない。
     const queueWait = durationMs => {
@@ -15368,9 +15387,15 @@ if (typeof module !== 'undefined' && module.exports) {
       if (pendingEnds.length) queueWait(Math.max(...pendingEnds.map(entry => entry.at)) - elapsedMs);
     };
 
-    for (const step of trace) {
-      // presentation付き入力はUIの補助表示専用。正規Traceは事実から毎回変換し、書き戻さない。
-      const rawCues = step.presentation || global.BattlePresentation.createCues(step);
+    // 同じ攻撃のHP更新を待機なしで反映した後、次の反応演出または攻撃終了の手前で一度だけ待つ。
+    const finishImpact = () => {
+      if (!pendingImpact) return;
+      queueWait(Math.max(0, pendingImpact.endsAt - elapsedMs));
+      queue.push({ kind: 'cue_end', cue: pendingImpact.playback.cue });
+      pendingImpact = null;
+    };
+
+    for (const { step, cues: rawCues } of global.BattlePresentation.buildPlaybackSteps(trace)) {
       const profileId = step.effect?.presentationId || (step.cause?.type === 'AttackStarted' ? 'on_attack' : 'independent');
       const profile = PROFILES[profileId];
       if (!profile) throw new Error(`Unknown presentation profile: ${profileId}`);
@@ -15383,6 +15408,9 @@ if (typeof module !== 'undefined' && module.exports) {
         ...(profile.fxKey ? { fxKey: profile.fxKey } : {}),
       }));
       if (cues.some(cue => cue.phase) && cues.length !== 1) throw new Error('Phased cue must own its state step');
+      if (pendingImpact && cues.length && !cues.some(cue => (
+        cue.phase === 'impact' && cue.playbackId === pendingImpact.playback.cue.playbackId
+      ))) finishImpact();
       if (!cues.some(cue => cue.phase) && cues.length) {
         if (!overlap) finishOverlays();
         const origin = overlap ? parent.startedAt + (profile.anchor === 'attack_impact'
@@ -15391,7 +15419,7 @@ if (typeof module !== 'undefined' && module.exports) {
         if (startAt > elapsedMs) queueWait(startAt - elapsedMs);
       }
       if (cues[0]?.phase !== 'impact') queue.push({ kind: 'state_display', stateAfter: step.stateAfter });
-      if (!cues.length) queue.push({ kind: 'paint' });
+      if (!cues.length && !pendingImpact) queue.push({ kind: 'paint' });
       for (const cue of cues) {
         if (!Object.hasOwn(CUE_RULES, cue.kind)) throw new Error(`Unknown presentation cue: ${cue.kind}`);
         const rule = CUE_RULES[cue.kind];
@@ -15407,31 +15435,29 @@ if (typeof module !== 'undefined' && module.exports) {
             if (!cue.attacker) throw new Error('Attack presentation requires attacker');
             if (rule.attackMotion && attackSeen) queueWait(timings.attackGap);
             if (rule.attackMotion) attackSeen = true;
-            playbacks.set(cue.playbackId, { cue, durationMs, startedAt: elapsedMs, finished: false });
+            playbacks.set(cue.playbackId, { cue, durationMs, startedAt: elapsedMs, impacted: false });
             queue.push({ kind: 'cue_start', cue, durationMs, timings });
             continue;
           }
           const playback = playbacks.get(cue.playbackId);
           if (!playback || playback.cue.kind !== cue.kind) throw new Error(`Unknown presentation playback: ${cue.playbackId}`);
           if (cue.phase === 'impact') {
-            const firstImpact = !playback.finished;
-            const impactCue = firstImpact ? playback.cue : { ...cue, attacker: null, motionKey: 'none' };
+            const firstImpact = !playback.impacted;
             if (firstImpact) {
               const impactAt = playback.startedAt + Math.min(playback.durationMs, timings.attackImpact);
               if (impactAt > elapsedMs) queueWait(impactAt - elapsedMs);
-            } else {
-              // 同じ攻撃の次の命中ではMotionを再開せず、その命中だけを表示する。
-              queue.push({ kind: 'cue_start', cue: impactCue, durationMs: timings.hit, timings });
             }
             queue.push({ kind: 'state_display', stateAfter: step.stateAfter });
-            queue.push({ kind: 'cue_impact', cue });
-            const sfxKey = playback.cue.sfxKey || rule.sfxId;
-            if (firstImpact && sfxKey) queue.push({ kind: 'sfx', sfxKey });
-            queueWait(firstImpact ? Math.max(timings.hit, playback.startedAt + playback.durationMs + rule.leadMs - elapsedMs) : timings.hit);
-            queue.push({ kind: 'cue_end', cue: impactCue });
-            playback.finished = true;
+            if (firstImpact) {
+              queue.push({ kind: 'cue_impact', cue });
+              const sfxKey = playback.cue.sfxKey || rule.sfxId;
+              if (sfxKey) queue.push({ kind: 'sfx', sfxKey });
+              pendingImpact = { playback, endsAt: Math.max(elapsedMs + timings.hit,
+                playback.startedAt + playback.durationMs + rule.leadMs) };
+            }
+            playback.impacted = true;
           } else if (cue.phase === 'complete') {
-            if (!playback.finished) {
+            if (!playback.impacted) {
               queueWait(Math.max(0, playback.startedAt + playback.durationMs + rule.leadMs - elapsedMs));
               queue.push({ kind: 'cue_end', cue: playback.cue });
             }
@@ -15466,6 +15492,7 @@ if (typeof module !== 'undefined' && module.exports) {
         if (rule.gapMs > 0) queueWait(rule.gapMs);
       }
     }
+    finishImpact();
     finishOverlays();
     if (playbacks.size) throw new Error('Presentation playback is not completed');
     return queue;
@@ -15866,6 +15893,32 @@ if (typeof module !== 'undefined' && module.exports) {
       label: step.action?.actionName || null, targets: step.targets }];
   }
 
+  // 明示された攻撃IDごとに実際の命中対象を束ねる。Snapshotの順序と内容は変更しない。
+  function buildPlaybackSteps(trace = []) {
+    const steps = trace.map(step => ({ step, cues: step.presentation || createCues(step) }));
+    const impacts = new Map();
+    for (const entry of steps) {
+      for (const cue of entry.cues) {
+        if (cue.phase !== 'impact') continue;
+        if (!impacts.has(cue.playbackId)) impacts.set(cue.playbackId, []);
+        impacts.get(cue.playbackId).push({ entry, cue });
+      }
+    }
+    for (const hits of impacts.values()) {
+      const first = hits[0];
+      // 後の前詰め座標ではなく、着弾開始時にそのUIDが表示されている場所へFXを置く。
+      const targets = hits.flatMap(({ cue }) => cue.targets || []).map(target => {
+        const board = first.entry.step.stateAfter?.[`${target.side}Board`];
+        const position = target.uid && Object.entries(board || {}).find(([, unit]) => unitUid(unit) === target.uid);
+        return position ? { ...target, posKey: position[0] } : target;
+      });
+      first.entry.cues = first.entry.cues.map(cue => cue === first.cue
+        ? { ...cue, targets, hitBase: hits.find(hit => hit.cue.hitBase)?.cue.hitBase || null }
+        : cue);
+    }
+    return steps;
+  }
+
   window.BattlePresentation = {
     createDefeatPresentationCue,
     createRevivePresentationCue,
@@ -15875,6 +15928,7 @@ if (typeof module !== 'undefined' && module.exports) {
     collectUnpresentedDamageUnitUids,
     collectUnpresentedDamageTargets,
     createCues,
+    buildPlaybackSteps,
   };
 })();
 </script>
